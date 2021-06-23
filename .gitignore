@@ -1,5 +1,6 @@
 .ipynb_checkpoints/*
 res/.ipynb_checkpoints/*
+res/embeddings/*
 notebook/.ipynb_checkpoints/*
 notebooks/*
 corpora/*

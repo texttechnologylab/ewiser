@@ -1,10 +1,11 @@
 #!/bin/bash
 
-MODEL='ewiser-hyper-lmms+sensembert'
-CORPUS_DIR='../res/experiments/semcor+wngt'
+MODEL='tueba-only-scratch_30-30'
+CORPUS_DIR='../res/experiments/tueba_only'
 EMBEDDINGS='../res/embeddings/sensembert+lmms.svd512.synset-centroid.vec'
 EDGES='../res/edges'
 EPOCHS=50
+EPOCHS2=50
 
 SAVEDIR=${CORPUS_DIR}/checkpoints/${MODEL}
 mkdir -p $SAVEDIR
@@ -24,7 +25,7 @@ args1=(\
 --clip-norm 1.0  \
 --context-embeddings \
 --context-embeddings-type bert \
---context-embeddings-bert-model roberta-large \
+--context-embeddings-bert-model bert-base-multilingual-cased \
 --context-embeddings-cache \
 --only-use-targets \
 --log-format tqdm \
@@ -49,7 +50,7 @@ args2=( --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits 
 # CUDA_VISIBLE_DEVICES=0 python train.py $CORPUS_DIR "${args1[@]}" --lr 1e-4 --save-dir $SAVEDIR-baseline --max-epoch $EPOCHS
 
 # EWISER training stage 1
-CUDA_VISIBLE_DEVICES=0 python train.py $CORPUS_DIR "${args1[@]}" "${args2[@]}" --lr 1e-4 --save-dir $SAVEDIR-fixedemb-traingraph --max-epoch $EPOCHS \
+CUDA_VISIBLE_DEVICES=0 python3 train.py $CORPUS_DIR "${args1[@]}" "${args2[@]}" --lr 1e-4 --save-dir $SAVEDIR-fixedemb-traingraph --max-epoch $EPOCHS \
 	--decoder-output-fixed --decoder-structured-logits-trainable
 
 if [ -f $SAVEDIR-fixedemb-traingraph/unfreeze-1e-5/checkpoint_last.pt ] ; then
@@ -61,7 +62,7 @@ else
 fi
 
 # EWISER training stage 2
-CUDA_VISIBLE_DEVICES=0 python train.py $CORPUS_DIR "${args1[@]}" "${args2[@]}" "${args3[@]}"\
+CUDA_VISIBLE_DEVICES=0 python3 train.py $CORPUS_DIR "${args1[@]}" "${args2[@]}" "${args3[@]}"\
 	--lr 1e-5 \
 	--save-dir $SAVEDIR-fixedemb-traingraph/unfreeze-1e-5 \
-	--max-epoch 20
+	--max-epoch $EPOCHS2

@@ -46,7 +46,7 @@ def main(args):
     model_args.cpu = 'cuda' not in args.device
     model_args.context_embeddings_cache = args.device
     state = data['model']
-    dictionary = Dictionary.load(DEFAULT_DICTIONARY)
+    dictionary = Dictionary.load(args.dict)
     output_dictionary = ResourceManager.get_offsets_dictionary()
 
     target_manager = TargetManager(SequenceLabelingTaskKind.WSD)
@@ -73,6 +73,7 @@ def main(args):
                 corpus,
                 dictionary,
                 use_synsets=True,
+                lang=args.lang,
                 max_length=args.max_length,
                 on_error='keep',
                 quiet=args.quiet,
@@ -106,7 +107,7 @@ def main(args):
         gold_path = Path(corpus.replace('data.xml', 'gold.key.txt'))
         bnids_map = None
         for line in gold_path.read_text().splitlines():
-            pieces = line.strip().split(' ')
+            pieces = line.strip().split()
             if not pieces:
                 continue
             trg, *gold = pieces
@@ -209,6 +210,16 @@ if __name__ == "__main__":
     parser.add_argument(
         '-x', '--xmls', type=str, required=True, nargs='+',
         help='Raganato XML(s), <name>.gold.key.txt should be in the same folder. Multiple can be given.')
+    parser.add_argument(
+        '--dict', required=False, type=str, default=DEFAULT_DICTIONARY, help=
+        'Path to the dict.txt file that should used')
+    parser.add_argument(
+        '-i', '--input-keys', type=str, default='sensekeys', choices=['sensekeys', 'offsets', 'bnids'], help=
+        """Kind of inputs keys in the <name>.gold.key.txt file. Will be all converted to WordNet offsets."""
+    )
+    parser.add_argument(
+        '--lang', required=False, type=str, default="en", help=
+        "Language, default english.")
     parser.add_argument('-E', '--ensemble', action='store_true',
         help='Ensemble evaluation.')
     parser.add_argument(

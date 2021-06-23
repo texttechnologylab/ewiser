@@ -164,7 +164,7 @@ class MFSManager:
     @classmethod
     def load(cls, path):
 
-        with open(path, 'rb') as file:
+        with open(path, 'rb', encoding="utf8") as file:
             inst = pickle.load(file)
 
         assert isinstance(path, cls)
@@ -313,7 +313,7 @@ class ResourceManager:
 
                 lemma_pos_string_to_offsets_strings = {}
 
-                with open(os.path.join(EWISER_RES_DIR, 'dictionaries', 'lemma_pos2offsets.' + lang + '.txt')) as file:
+                with open(os.path.join(EWISER_RES_DIR, 'dictionaries', 'lemma_pos2offsets.' + lang + '.txt'), encoding="utf8") as file:
                     for line in file:
                         line = line.strip()
                         if not line:

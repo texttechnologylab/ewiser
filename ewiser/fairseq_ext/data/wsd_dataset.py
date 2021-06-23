@@ -906,7 +906,14 @@ class WSDDataset(FairseqDataset):
             if self.oov_dictionary:
                 s = self.oov_dictionary.get(i)
                 if s is None:
-                    s = self.dictionary.symbols[tkn]
+                    try:
+                        s = self.dictionary.symbols[tkn]
+                    except IndexError:
+                        print()
+                        print(tkn)
+                        print(len(self.dictionary.symbols))
+                        print(self.dictionary.symbols[:100])
+                        raise
             else:
                 s = self.dictionary.symbols[tkn]
             tokens_str.append(s)

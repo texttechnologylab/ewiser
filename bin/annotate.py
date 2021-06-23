@@ -16,8 +16,8 @@ def read_paragraphs(it):
     if doc:
         yield "\n".join(doc)
 
-def annotate_and_print(it_par, nlp):
-    for par in nlp.pipe(it_par, batch_size=5):
+def annotate_and_print(it_par, nlp, batch_size = 5):
+    for par in nlp.pipe(it_par, batch_size=batch_size):
         for token in par:
             if token.text == '\n':
                 print()
@@ -38,10 +38,10 @@ if __name__ == '__main__':
     from ewiser.spacy.disambiguate import Disambiguator
     from spacy import load
 
-    parser = ArgumentParser(description='Script to annotate raw text.')
+    parser = ArgumentParser(description='Script to produce EWISER scores for fasttext files')
     parser.add_argument(
         'input', type=str,
-        help='Input lines. Raw text file or stdin (if arg == "-").')
+        help='Input lines. FastText file or stdin (if arg == "-").')
     parser.add_argument(
         '-c', '--checkpoint', type=str,
         help='Trained EWISER checkpoint.')
@@ -62,8 +62,9 @@ if __name__ == '__main__':
     if args.input == '-':
         lines = fileinput.input(['-'])
         pars = read_paragraphs(lines)
-        annotate_and_print(pars, nlp)
+        annotate_and_print(pars, nlp, batch_size = 1)
     else:
         with open(args.input) as lines:
             pars = read_paragraphs(lines)
             annotate_and_print(pars, nlp)
+            

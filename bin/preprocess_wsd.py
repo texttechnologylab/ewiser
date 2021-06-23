@@ -17,6 +17,9 @@ if __name__ == "__main__":
         '-x', '--xmls', required=False, type=str, nargs='*', help=
         'Raganato XML(s), <name>.gold.key.txt should be in the same folder.')
     parser.add_argument(
+        '-d', '--dict', required=False, type=str, default=DEFAULT_DICTIONARY, help=
+        'Path to the dict.txt file that should used')
+    parser.add_argument(
         '-l', '--max-length', required=False, type=int, default=100, help=
         'Split input sequences in chunks of at most l=arg tokens.')
     parser.add_argument(
@@ -37,7 +40,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    dictionary = Dictionary.load(DEFAULT_DICTIONARY)
+    dictionary = Dictionary.load(args.dict)
     output_dictionary = ResourceManager.get_senses_dictionary(use_synsets=True)
 
     output = WSDDatasetBuilder(
