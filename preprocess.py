@@ -5,7 +5,7 @@ class ewiser():
     
     VALID_POS = ["NOUN", "VERB", "ADJ", "ADJ"]
 
-    def set_dicts(self, datasets, built_ins):
+    def set_dicts(self, datasets, built_ins = False):
         # TODO: built ins
         # TODO: Write out the dictionaries
         # Note: This might not work properly for english corpora?
@@ -30,6 +30,7 @@ class ewiser():
                 wn2bn[wn] = bn
     
         # Create new current ones using datasets and optionally built ins.
+        forms = {}
         lemma_pos_lang = {}
         lemma_pos2offsets_lang = {}
         for lang in langs:
@@ -38,8 +39,10 @@ class ewiser():
         for dataset in datasets:
             lang = dataset.lang
             for entry in dataset:
+                # lemma pos
                 lemma = entry.lemma
                 upos = entry.upos
+                assert "tokens" in entry, "Entries must have list of tokens"
                 assert upos in self.VALID_POS, "EWISER cannot process pos other than NOUN, VERB, ADJ or ADV"
                 if upos == "NOUN":
                     pos = "n"
@@ -51,6 +54,8 @@ class ewiser():
                     pos = "r"
                 lemma_pos_key = lemma + "#" + pos
                 lemma_pos_lang[lang].add(lemma_pos_key)
+                
+                # possible babelnet ids
                 label = entry.label
                 # pos2offsets have to be babelnet ids.
                 assert label.startswith("wn:") or label.startswith("bn:"), "Ewiser labels must be wordnet offsets or babelnet ids in the format 'wn:<offset>' or 'bn:<id>'"
@@ -67,16 +72,39 @@ class ewiser():
                 else:
                     lemma_pos2offsets_lang[lang][lemma_pos_key] = set([bnlabel])
                     
-                    
+                # form dict
+                
+                for token in dataset.tokens:
+                    form = token.form
+                    if form in forms:
+                        forms[form] += 1
+                    else:
+                        forms[form] = 1
+                
         
-        # Update lemma_pos and lemma_pos2offsets for each language
-        # Built_ins will load and include the dicts that ewiser came with
+        for lang in langs:
+            with open(os.path.join(DICT_PATH, "lemma_pos." + lang + ".txt"), "w", encoding="utf8") as f:
+                for lemma_pos in lemma_pos_lang[lang]:
+                    f.write(lemma_pos + " 1\n")
+            
+            with open(os.path.join(DICT_PATH, "lemma_pos2offsets." + lang + ".txt"), "w", encoding = "utf8") as f:
+                for lemma_pos in lemma_pos2offsets_lang[lang]:
+                    f.write(lemma_pos + "\t" + "\t".join(lemma_pos2offsets_lang[lang][lemma_pos]))
+        
+        # Sort forms by frequency.
+        out = [item[0] + " " + str(item[1]) for item in sorted(forms.items(), key=lambda item: item[1], reverse=True)]
+        with open(os.path.join(DICT_PATH, "dict.txt"), "w", encoding="utf8") as f:
+            for line in out:
+                f.write(line + "\n")
+        
+        # Built_ins should load and include the dicts that ewiser came with
         
     
-    def preproc(self, datasets, directory):
+    def preproc(self, trainsets, evalsets, directory):
         # Make raganato xmls from datasets
-        # Update dictionaries
+        self.set_dicts(datasets)
         # Call the builtin preprocessing function on xmls
+        # Copy 
 
         
 def train_test_split(dataset):
