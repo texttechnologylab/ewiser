@@ -3,9 +3,6 @@ import json
 import jsonpickle
 
 
-DICT_PATH = "res/dictionaries"
-
-
 """
 Defines the data format for the pipeline scripts train/eval for wsd.
 Files are lists of json objects that each must contain the following fields for EWISER processsing:
@@ -24,18 +21,7 @@ Files are lists of json objects that each must contain the following fields for 
 Entries can contain additional fields without interfering, but they will not be used/considered for EWISER
 """
 
-class wsdEntry():
-
-    def __init__(self, label, lemma, upos, tokens = [], sentence = None):
-        self.label = label
-        self.lemma = lemma
-        self.tokens = tokens
-        self.sentence = sentence
-        self.upos = upos
-
-        
 class wsdToken():
-
     def __init__(self, form, lemma, pos, begin, end, upos = None, is_pivot = False):
         self.form = form
         self.lemma = lemma
@@ -46,18 +32,33 @@ class wsdToken():
         self.is_pivot = is_pivot
         
         
+class wsdEntry():
+    def __init__(self, label, lemma, upos, tokens = [], sentence = None, source_Id = None):
+        self.label = label
+        self.lemma = lemma
+        self.tokens = tokens
+        self.sentence = sentence
+        self.upos = upos
+        self.source_Id = source_Id
+        
+        
 class wsdData():
-
-    def __init__(self, lang, entries = [], json=None):
+    def __init__(self, name, lang, labeltype, entries = [], json=None):
+        assert labeltype in ["wnoffsets", "bnids", "gnet"]
+        self.name = name
         self.entries = entries
         self.lang = lang
-        if not json is None:
-            self.load(json)
+        self.labeltype = labeltype
         
-    def load(self, json_path):
+    @classmethod
+    def load(cls, json_path):
         with open(json_path, "r", encoding="utf8") as f:
             loaded=json.load(f)
-            for entry in loaded:
+            lang = loaded["lang"]
+            name = loaded["name"]
+            labeltype = loaded["labeltype"]
+            entries = []
+            for entry in loaded["entries"]:
                 label = entry["label"]
                 target_lemma = entry["lemma"]
                 entry_pos = entry["upos"]
@@ -84,8 +85,8 @@ class wsdData():
                         is_pivot = token["pivot"]
                         l_tokens.append(wsdToken(form, lemma, pos, begin, end, upos=upos, is_pivot=is_pivot))
                         
-                self.entries.append(wsdEntry(label, target_lemma, entry_pos, tokens=l_tokens, sentence=sentence))
-                
+                entries.append(wsdEntry(label, target_lemma, entry_pos, tokens=l_tokens, sentence=sentence))
+            return cls(name, lang, labeltype, entries)
                 
     def save(self, outpath):
         out = jsonpickle.encode(self.entries, unpicklable=False, indent=2)
@@ -95,5 +96,6 @@ class wsdData():
     def add(self, other):
         """ Merges the other dataset into this one. This can only be done if both have the same language"""
         assert self.lang == other.lang
+        self.name = self.name + "+" + other.name
         self.entries.extend(other.entries)
             
