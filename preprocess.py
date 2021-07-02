@@ -6,16 +6,20 @@ from dataset import wsdToken, wsdEntry, wsdData
 
 from fairseq.data import Dictionary
 
-from ewiser.fairseq_ext.data.dictionaries import MFSManager, ResourceManager, DEFAULT_DICTIONARY
+from ewiser.fairseq_ext.data.dictionaries import ResourceManager
 from ewiser.fairseq_ext.data.wsd_dataset import WSDDataset, WSDDatasetBuilder
 
 class ewiser():
     
     VALID_POS = ["NOUN", "VERB", "ADJ", "ADJ"]
     VALID_LABELS = ["wnoffsets", "bnids"]
-    DICT_PATH = "res/dictionaries" # This is not freely adjustable as it is referenced in EWISER code itself
-
-    def set_dicts(self, datasets, built_ins = False):
+    # These is not freely adjustable as they are referenced in EWISER code itself
+    DICT_PATH = "res/dictionaries" 
+    EMB_PATH = "res/embeddings"
+    EDGE_PATH = "res/edges"
+    
+    @classmethod
+    def set_dicts(cls, datasets, built_ins = False):
         # TODO: built ins
         # Write out the dictionaries
         # Note: This might not work properly for english corpora?
@@ -26,14 +30,14 @@ class ewiser():
         # Remove current dictionaries
         for dataset in datasets:
             langs.add(dataset.lang)
-        os.remove(os.path.join(self.DICT_PATH, "dict.txt"))
+        os.remove(os.path.join(cls.DICT_PATH, "dict.txt"))
         for lang in langs:
-            os.remove(os.path.join(self.DICT_PATH, "lemma_pos." + lang + ".txt"))
-            os.remove(os.path.join(self.DICT_PATH, "lemma_pos2offsets." + lang + ".txt"))
+            os.remove(os.path.join(cls.DICT_PATH, "lemma_pos." + lang + ".txt"))
+            os.remove(os.path.join(cls.DICT_PATH, "lemma_pos2offsets." + lang + ".txt"))
             
         # Load wordnet to babelnet mapping
         wn2bn = {}
-        with open(os.path.join(self.DICT_PATH, "bnids_map.txt"), "r", encoding="utf8") as f:
+        with open(os.path.join(cls.DICT_PATH, "bnids_map.txt"), "r", encoding="utf8") as f:
             for line in f:
                 line = line.strip().split("\t")
                 bn = line[0]
@@ -48,14 +52,15 @@ class ewiser():
             lemma_pos_lang[lang] = set()
             lemma_pos2offsets_lang[lang] = {}
         for dataset in datasets:
+            print("Processing dataset {}".format(dataset.name))
             lang = dataset.lang
-            assert dataset.labetype in self.VALID_LABELS, "Labels must be one of {}".format(self.VALID_LABELS)
+            assert dataset.labetype in cls.VALID_LABELS, "Labels must be one of {}".format(cls.VALID_LABELS)
             for entry in dataset:
                 # lemma pos
                 lemma = entry.lemma
                 upos = entry.upos
                 assert "tokens" in entry, "Entries must have list of tokens"
-                assert upos in self.VALID_POS, "EWISER cannot process pos other than NOUN, VERB, ADJ or ADV"
+                assert upos in cls.VALID_POS, "EWISER cannot process pos other than NOUN, VERB, ADJ or ADV"
                 if upos == "NOUN":
                     pos = "n"
                 elif upos == "VERB":
@@ -95,27 +100,27 @@ class ewiser():
                 
         
         for lang in langs:
-            with open(os.path.join(self.DICT_PATH, "lemma_pos." + lang + ".txt"), "w", encoding="utf8") as f:
+            with open(os.path.join(cls.DICT_PATH, "lemma_pos." + lang + ".txt"), "w", encoding="utf8") as f:
                 for lemma_pos in lemma_pos_lang[lang]:
                     f.write(lemma_pos + " 1\n")
             
-            with open(os.path.join(self.DICT_PATH, "lemma_pos2offsets." + lang + ".txt"), "w", encoding = "utf8") as f:
+            with open(os.path.join(cls.DICT_PATH, "lemma_pos2offsets." + lang + ".txt"), "w", encoding = "utf8") as f:
                 for lemma_pos in lemma_pos2offsets_lang[lang]:
                     f.write(lemma_pos + "\t" + "\t".join(lemma_pos2offsets_lang[lang][lemma_pos]))
         
         # Sort forms by frequency.
         out = [item[0] + " " + str(item[1]) for item in sorted(forms.items(), key=lambda item: item[1], reverse=True)]
-        with open(os.path.join(self.DICT_PATH, "dict.txt"), "w", encoding="utf8") as f:
+        with open(os.path.join(cls.DICT_PATH, "dict.txt"), "w", encoding="utf8") as f:
             for line in out:
                 f.write(line + "\n")
         
         # TODO: Built_ins should load and include the dicts that ewiser came with
         
-    
-    def make_raganato(self, dataset, directory):
+        
+    @classmethod
+    def make_raganato(cls, dataset, directory):
         # Writes out the dataset in the raganto xml format. This is used by EWISER for its own preprocessing
         # XML filename is be dataset.name + ".data.xml"
-        # TODO: All of it
         root = ET.Element("corpus")
         
         gold_keys = []
@@ -159,7 +164,8 @@ class ewiser():
                 f.write(key + "\n")
                 
     
-    def preproc(self, trainsets, evalsets, directory, max_length = 100, on_error="skip", quiet = quiet):
+    @classmethod
+    def preproc(cls, trainsets, evalsets, directory, max_length = 100, on_error="skip", quiet = quiet):
         # Setup
         try:
             os.makedirs(directory)
@@ -168,9 +174,9 @@ class ewiser():
             print("Could not create data directories")
         
         # Make dictionaries
-        self.set_dicts(datasets)
+        cls.set_dicts(datasets)
         # Copy form dictionary that we need for preprocessing and training
-        shutil.copy(os.path.join(self.DICT_PATH, "dict.txt"), directory)
+        shutil.copy(os.path.join(cls.DICT_PATH, "dict.txt"), directory)
             
         # Setup EWISER preproc
         dictionary = Dictionary.load(os.path.join(directory, "dict.txt"))
@@ -182,8 +188,9 @@ class ewiser():
             assert dataset.labetype in VALID_LABELS, "Labels must be one of {}".format(VALID_LABELS)
             dirname = "train{}".format(i if i > 0 else "")
             os.mkdir(os.path.join(directory, "data", dirname))
-            self.make_raganato(datasets, os.path.join(directory, "data", dirname))
+            cls.make_raganato(datasets, os.path.join(directory, "data", dirname))
             
+            # Ewiser preproc
             output = WSDDatasetBuilder(
                 os.path.join(directory, dirname),
                 dictionary=dictionary,
@@ -214,8 +221,9 @@ class ewiser():
             assert dataset.labetype in VALID_LABELS, "Labels must be one of {}".format(VALID_LABELS)
             dirname = "valid{}".format(i if i > 0 else "")
             os.mkdir(os.path.join(directory, "data", dirname))
-            self.make_raganato(datasets, os.path.join(directory, "data", dirname))
+            cls.make_raganato(datasets, os.path.join(directory, "data", dirname))
 
+            # Ewiser preproc
             output = WSDDatasetBuilder(
                 os.path.join(directory, dirname),
                 dictionary=dictionary,
@@ -298,3 +306,5 @@ def train_test_split(dataset, ratio_eval = 0.2, ratio_test = 0.2):
 def tokenize(dataset):
     # Run the Java UIMA thingy somehow
     pass
+    
+# TODO: CLI 
