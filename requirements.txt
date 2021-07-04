@@ -7,3 +7,4 @@ pytorch_pretrained_bert
 torch_scatter
 networkx
 jsonpickle
+lxml

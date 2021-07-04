@@ -101,7 +101,7 @@ class WSDData:
         self.entries.extend(other.entries)
 
 
-def train_test_split(dataset, ratio_eval=0.2, ratio_test=0.2):
+def train_test_split(dataset: WSDData, ratio_eval=0.2, ratio_test=0.2):
     # Split dataset into train/eval/test datasets with stratification using the gold labels
     assert ratio_eval + ratio_test <= 1.0
     assert ratio_eval >= 0.0
@@ -153,6 +153,6 @@ def train_test_split(dataset, ratio_eval=0.2, ratio_test=0.2):
     return trainset, evalset, testset
 
 
-def tokenize(dataset):
+def tokenize(dataset: WSDData):
     # Run the Java UIMA thingy somehow
     pass

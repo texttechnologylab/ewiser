@@ -4,6 +4,8 @@ from lxml import etree as ET
 
 from fairseq.data import Dictionary
 
+import dataset as ds
+
 from ewiser.fairseq_ext.data.dictionaries import ResourceManager
 from ewiser.fairseq_ext.data.wsd_dataset import WSDDatasetBuilder
 
@@ -15,7 +17,7 @@ EMB_PATH = "../res/embeddings"
 EDGE_PATH = "../res/edges"
 
 
-def set_dicts(datasets, built_ins=False):
+def set_dicts(datasets: list[ds.WSDData], built_ins=False):
     # TODO: built ins
     # Write out the dictionaries
     # Note: This might not work properly for english corpora?
@@ -43,14 +45,15 @@ def set_dicts(datasets, built_ins=False):
     forms = {}
     lemma_pos_lang = {}
     lemma_pos2offsets_lang = {}
+    paths = []
     for lang in langs:
         lemma_pos_lang[lang] = set()
         lemma_pos2offsets_lang[lang] = {}
     for dataset in datasets:
         print("Processing dataset {}".format(dataset.name))
         lang = dataset.lang
-        assert dataset.labetype in VALID_LABELS, "Labels must be one of {}".format(VALID_LABELS)
-        for entry in dataset:
+        assert dataset.labeltype in VALID_LABELS, "Labels must be one of {} for EWISER".format(VALID_LABELS)
+        for entry in dataset.entries:
             # lemma pos
             lemma = entry.lemma
             upos = entry.upos
@@ -97,24 +100,29 @@ def set_dicts(datasets, built_ins=False):
 
     for lang in langs:
         with open(os.path.join(DICT_PATH, "lemma_pos." + lang + ".txt"), "w", encoding="utf8") as f:
+            paths.append(os.path.realpath(f.name))
             for lemma_pos in lemma_pos_lang[lang]:
                 f.write(lemma_pos + " 1\n")
 
         with open(os.path.join(DICT_PATH, "lemma_pos2offsets." + lang + ".txt"), "w", encoding="utf8") as f:
+            paths.append(os.path.realpath(f.name))
             for lemma_pos in lemma_pos2offsets_lang[lang]:
                 f.write(lemma_pos + "\t" + "\t".join(lemma_pos2offsets_lang[lang][lemma_pos]))
 
     # Sort forms by frequency.
     out = [item[0] + " " + str(item[1]) for item in sorted(forms.items(), key=lambda item: item[1], reverse=True)]
     with open(os.path.join(DICT_PATH, "dict.txt"), "w", encoding="utf8") as f:
+        paths.append(os.path.realpath(f.name))
         for line in out:
             f.write(line + "\n")
 
+    # Return the paths to all dictionaries we created, so we can back them up
+    return paths
     # TODO: Built_ins should load and include the dicts that ewiser came with
 
 
-def make_raganato(dataset, directory):
-    # Writes out the dataset in the raganto xml format. This is used by EWISER for its own preprocessing
+def make_raganato(dataset: ds.WSDData, directory):
+    # Writes out the dataset in the raganto xml format. This is used by EWISER for eval and its own preprocessing
     # XML filename is be dataset.name + ".data.xml"
     root = ET.Element("corpus")
 
@@ -159,7 +167,7 @@ def make_raganato(dataset, directory):
             f.write(key + "\n")
 
 
-def preproc(trainsets, evalsets, directory, max_length=100, on_error="skip", quiet=False):
+def preproc(trainsets: list[ds.WSDData], evalsets: list[ds.WSDData], directory: str, max_length=100, on_error="skip", quiet=False):
     # Setup
     try:
         os.makedirs(directory)
@@ -168,9 +176,11 @@ def preproc(trainsets, evalsets, directory, max_length=100, on_error="skip", qui
         print("Could not create data directories")
 
     # Make dictionaries
-    set_dicts(trainsets + evalsets)
+    created_dicts = set_dicts(trainsets + evalsets)
     # Copy form dictionary that we need for preprocessing and training
-    shutil.copy(os.path.join(DICT_PATH, "dict.txt"), directory)
+    for dictpath in created_dicts:
+        shutil.copy(dictpath, directory)
+    # Copy other dictionaries as well for backup
 
     # Setup EWISER preproc
     dictionary = Dictionary.load(os.path.join(directory, "dict.txt"))
@@ -179,7 +189,7 @@ def preproc(trainsets, evalsets, directory, max_length=100, on_error="skip", qui
     # Make raganatos and create preprocessed files from those
     print("Creating/processing training data...")
     for i, dataset in enumerate(trainsets):
-        assert dataset.labetype in VALID_LABELS, "Labels must be one of {}".format(VALID_LABELS)
+        assert dataset.labeltype in VALID_LABELS, "Labels must be one of {}".format(VALID_LABELS)
         dirname = "train{}".format(i if i > 0 else "")
         os.mkdir(os.path.join(directory, "data", dirname))
         make_raganato(dataset, os.path.join(directory, "data", dirname))
@@ -194,9 +204,9 @@ def preproc(trainsets, evalsets, directory, max_length=100, on_error="skip", qui
 
         # adjust keys:
         input_keys = None
-        if dataset.labetype == "wnoffsets":
+        if dataset.labeltype == "wnoffsets":
             input_keys = "offsets"
-        elif dataset.labetype == "bnids":
+        elif dataset.labeltype == "bnids":
             input_keys = "bnids"
 
         output.add_raganato(
@@ -212,7 +222,7 @@ def preproc(trainsets, evalsets, directory, max_length=100, on_error="skip", qui
 
     print("Creating/processing eval data...")
     for i, dataset in enumerate(evalsets):
-        assert dataset.labetype in VALID_LABELS, "Labels must be one of {}".format(VALID_LABELS)
+        assert dataset.labeltype in VALID_LABELS, "Labels must be one of {}".format(VALID_LABELS)
         dirname = "valid{}".format(i if i > 0 else "")
         os.mkdir(os.path.join(directory, "data", dirname))
         make_raganato(dataset, os.path.join(directory, "data", dirname))
@@ -227,9 +237,9 @@ def preproc(trainsets, evalsets, directory, max_length=100, on_error="skip", qui
 
         # adjust keys:
         input_keys = None
-        if dataset.labetype == "wnoffsets":
+        if dataset.labeltype == "wnoffsets":
             input_keys = "offsets"
-        elif dataset.labetype == "bnids":
+        elif dataset.labeltype == "bnids":
             input_keys = "bnids"
 
         output.add_raganato(
@@ -242,5 +252,3 @@ def preproc(trainsets, evalsets, directory, max_length=100, on_error="skip", qui
         )
 
         output.finalize()
-
-# TODO: CLI 
