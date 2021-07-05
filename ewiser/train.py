@@ -77,7 +77,7 @@ def train(out_dir: str, modelname: str, **params):
         for line in outlines:
             f.write(line + "\n")
 
-    subprocess.call("bash train_bash.sh")
+    subprocess.call(["bash", "train_bash.sh"])
 
 
 # CLI will take datasets as files, tmpdir, modeldir and any params, then load datasets and call train
