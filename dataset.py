@@ -5,8 +5,12 @@ import jsonpickle
 
 """
 Defines the data format for the pipeline scripts train/eval for wsd.
-Files are lists of json objects, each representing a single training/disambiguation instance that must 
-contain the following fields for EWISER processsing:
+Files are jsonobjects containing the following fields:
+'name': Arbitary name for the dataset
+'lang': Language for the dataset
+'labeltype': What type of labels this dataset uses. Must be one of ["wnoffsets", "bnids", "gn"].
+'entries': A list of Objects, each representing a single training/disambiguation instance that must contain the 
+    following fields for EWISER processing:
     'label': String, Gold label for disambiguation. This must be either wordnet offsets or babelnet ids.
     'lemma': String, target lemma for disambiguation.
     'upos': String, target pos. Must be either 'NOUN', 'VERB', 'ADJ' or 'ADV'
