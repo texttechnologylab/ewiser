@@ -42,7 +42,8 @@ class WSDToken:
         
         
 class WSDEntry:
-    def __init__(self, label: str, lemma: str, upos: str, tokens=[], sentence=None, source_id=None, pivot_start=None, pivot_end=None):
+    def __init__(self, label: str, lemma: str, upos: str, tokens=[], 
+                 sentence=None, source_id=None, pivot_start=None, pivot_end=None):
         self.label = label
         self.lemma = lemma
         self.tokens = tokens
@@ -62,7 +63,7 @@ class WSDData:
         self.labeltype = labeltype
 
     @classmethod
-    def _load_opt(cls, entry: WSDEntry, key: str, default=None):
+    def _load_opt(cls, entry, key: str, default=None):
         if key in entry:
             return entry[key]
         else:
@@ -121,7 +122,7 @@ class WSDData:
         with open(outpath, "w+", encoding="utf8") as f:
             f.write(out)
             
-    def add(self, other: WSDData):
+    def add(self, other):
         """ Merges the other dataset into this one. This can only be done if both have the same language"""
         assert self.lang == other.lang
         self.name = self.name + "+" + other.name
