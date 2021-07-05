@@ -1,6 +1,6 @@
 import os
 import shutil
-from lxml import etree as ET
+from lxml import etree as et
 
 from fairseq.data import Dictionary
 
@@ -12,9 +12,10 @@ from ewiser.fairseq_ext.data.wsd_dataset import WSDDatasetBuilder
 VALID_POS = ["NOUN", "VERB", "ADJ", "ADJ"]
 VALID_LABELS = ["wnoffsets", "bnids"]
 # These is not freely adjustable as they are referenced in EWISER code itself
-DICT_PATH = "../res/dictionaries"
-EMB_PATH = "../res/embeddings"
-EDGE_PATH = "../res/edges"
+dir_path = os.path.dirname(os.path.realpath(__file__))
+DICT_PATH = os.path.abspath(os.path.join(dir_path, "../res/dictionaries"))
+EMB_PATH = os.path.abspath(os.path.join(dir_path, "../res/embeddings"))
+EDGE_PATH = os.path.abspath(os.path.join(dir_path, "../res/edges"))
 
 
 def set_dicts(datasets: list[ds.WSDData], built_ins=False):
@@ -27,10 +28,16 @@ def set_dicts(datasets: list[ds.WSDData], built_ins=False):
     # Remove current dictionaries
     for dataset in datasets:
         langs.add(dataset.lang)
-    os.remove(os.path.join(DICT_PATH, "dict.txt"))
+    main_dict_path = os.path.join(DICT_PATH, "dict.txt")
+    if os.path.exists(main_dict_path):
+        os.remove(os.path.join(DICT_PATH, "dict.txt"))
     for lang in langs:
-        os.remove(os.path.join(DICT_PATH, "lemma_pos." + lang + ".txt"))
-        os.remove(os.path.join(DICT_PATH, "lemma_pos2offsets." + lang + ".txt"))
+        pos_path = os.path.join(DICT_PATH, "lemma_pos." + lang + ".txt")
+        if os.path.exists(pos_path):
+            os.remove(pos_path)
+        offsets_path = os.path.join(DICT_PATH, "lemma_pos2offsets." + lang + ".txt")
+        if os.path.exists(offsets_path):
+            os.remove(offsets_path)
 
     # Load wordnet to babelnet mapping
     wn2bn = {}
@@ -57,7 +64,7 @@ def set_dicts(datasets: list[ds.WSDData], built_ins=False):
             # lemma pos
             lemma = entry.lemma
             upos = entry.upos
-            assert "tokens" in entry, "Entries must have list of tokens"
+            assert len(entry.tokens) > 0, "Entries must have list of tokens"
             assert upos in VALID_POS, "EWISER cannot process pos other than NOUN, VERB, ADJ or ADV"
             pos = None
             if upos == "NOUN":
@@ -75,12 +82,13 @@ def set_dicts(datasets: list[ds.WSDData], built_ins=False):
             # possible babelnet ids
             label = entry.label
             # pos2offsets have to be babelnet ids.
-            assert label.startswith("wn:") or label.startswith("bn:"), "Ewiser labels must be wordnet offsets or babelnet ids in the format 'wn:<offset>' or 'bn:<id>'"
+            assert label.startswith("wn:") or label.startswith("bn:"), \
+                "Ewiser labels must be wordnet offsets or babelnet ids in the format 'wn:<offset>' or 'bn:<id>'"
             bnlabel = None
             if label.startswith("wn:"):
                 # Translate from wordnet to bn using the provided mapping
                 try:
-                    bnlabel = wn2bn[wn]
+                    bnlabel = wn2bn[label]
                 except IndexError as e:
                     raise IndexError("Couldn't find a babelnet id for wordnet label {}".format(label)) from e
             elif label.startswith("bn:"):
@@ -107,7 +115,7 @@ def set_dicts(datasets: list[ds.WSDData], built_ins=False):
         with open(os.path.join(DICT_PATH, "lemma_pos2offsets." + lang + ".txt"), "w", encoding="utf8") as f:
             paths.append(os.path.realpath(f.name))
             for lemma_pos in lemma_pos2offsets_lang[lang]:
-                f.write(lemma_pos + "\t" + "\t".join(lemma_pos2offsets_lang[lang][lemma_pos]))
+                f.write(lemma_pos + "\t" + "\t".join(lemma_pos2offsets_lang[lang][lemma_pos]) + "\n")
 
     # Sort forms by frequency.
     out = [item[0] + " " + str(item[1]) for item in sorted(forms.items(), key=lambda item: item[1], reverse=True)]
@@ -124,7 +132,7 @@ def set_dicts(datasets: list[ds.WSDData], built_ins=False):
 def make_raganato(dataset: ds.WSDData, directory):
     # Writes out the dataset in the raganto xml format. This is used by EWISER for eval and its own preprocessing
     # XML filename is be dataset.name + ".data.xml"
-    root = ET.Element("corpus")
+    root = et.Element("corpus")
 
     gold_keys = []
 
@@ -132,42 +140,52 @@ def make_raganato(dataset: ds.WSDData, directory):
     for entry in dataset.entries:
         doc_counter += 1
         doc_id = "d{:07d}".format(doc_counter)
-        text = ET.SubElement(root, "text")
+        text = et.SubElement(root, "text")
         text.set("id", doc_id)
-        text.set("source", dataset.name)
+        source_id = entry.source_id
+        if source_id is None:
+            source_id = dataset.name + str(doc_counter)
+        text.set("source", source_id)
 
         sent_id = "s001"
-        sentence = ET.SubElement(text, "sentence")
+        sentence = et.SubElement(text, "sentence")
         sentence.set("id", doc_id + "." + sent_id)
 
         for token in entry.tokens:
             instance_counter = 0
             if token.is_pivot:
                 instance_counter += 1
-                instance_id = "h{:3d}".format(instance_counter)
-                instance = ET.SubElement(sentence, "instance")
+                instance_id = "h{:03d}".format(instance_counter)
+                instance = et.SubElement(sentence, "instance")
                 instance.set("id", doc_id + "." + sent_id + "." + instance_id)
                 instance.set("lemma", token.lemma)
                 instance.set("pos", token.upos)
                 instance.text = token.form
-
                 gold_keys.append(doc_id + "." + sent_id + "." + instance_id + "\t" + entry.label)
             else:
-                word = ET.SubElement(sentence, "wf")
+                word = et.SubElement(sentence, "wf")
                 word.set("lemma", token.lemma)
                 word.set("pos", token.upos)
                 word.text = token.form
 
     # Write out files
-    tree = ET.ElementTree(root)
-    tree.write(os.path.join(directory, dataset.name + ".data.xml"), encoding="utf8", pretty_print=True, xml_declaration=True)
+    tree = et.ElementTree(root)
+    tree.write(os.path.join(directory, dataset.name + ".data.xml"),
+               encoding="utf-8",
+               pretty_print=True,
+               xml_declaration=True)
 
     with open(os.path.join(directory, dataset.name + ".gold.key.txt"), "w", encoding="utf8") as f:
         for key in gold_keys:
             f.write(key + "\n")
 
 
-def preproc(trainsets: list[ds.WSDData], evalsets: list[ds.WSDData], directory: str, max_length=100, on_error="skip", quiet=False):
+def preproc(trainsets: list[ds.WSDData],
+            evalsets: list[ds.WSDData],
+            directory: str,
+            max_length=100,
+            on_error="skip",
+            quiet=False):
     # Setup
     try:
         os.makedirs(directory)
@@ -210,7 +228,7 @@ def preproc(trainsets: list[ds.WSDData], evalsets: list[ds.WSDData], directory: 
             input_keys = "bnids"
 
         output.add_raganato(
-            xml_path=os.path.join(directory, dirname, dataset.name + ".data.xml"),
+            xml_path=os.path.join(directory, "data", dirname, dataset.name + ".data.xml"),
             max_length=max_length,
             input_keys=input_keys,
             on_error=on_error,
@@ -243,7 +261,7 @@ def preproc(trainsets: list[ds.WSDData], evalsets: list[ds.WSDData], directory: 
             input_keys = "bnids"
 
         output.add_raganato(
-            xml_path=os.path.join(directory, dirname, dataset.name + ".data.xml"),
+            xml_path=os.path.join(directory, "data", dirname, dataset.name + ".data.xml"),
             max_length=max_length,
             input_keys=input_keys,
             on_error=on_error,

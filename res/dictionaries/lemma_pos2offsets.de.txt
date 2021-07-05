@@ -1,0 +1,68 @@
+bauen#v	bn:00084198v	bn:00090262v
+auffallen#v	bn:00082430v	bn:00090661v
+merken#v	bn:00090661v
+gestalten#v	bn:00083294v	bn:00088490v
+bedeuten#v	bn:00089805v	bn:00093740v
+liefern#v	bn:00086531v
+heißen#v	bn:00084385v
+begrüßen#v	bn:00095705v	bn:00089039v
+verkaufen#v	bn:00093472v	bn:00093473v
+ankündigen#v	bn:00082637v	bn:00083436v
+behandeln#v	bn:00082734v	bn:00087116v	bn:00092032v	bn:00084532v
+herrschen#v	bn:00087151v	bn:00087152v
+fragen#v	bn:00092265v
+betragen#v	bn:00082327v
+stehlen#v	bn:00094314v
+beraten#v	bn:00082415v	bn:00085574v	bn:00085651v
+raten#v	bn:00082415v	bn:00089107v
+informieren#v	bn:00089724v	bn:00082281v
+existieren#v	bn:00083184v
+sitzen#v	bn:00093776v	bn:00087111v	bn:00088243v	bn:00093777v
+dasitzen#v	bn:00093776v
+aussehen#v	bn:00090449v
+freuen#v	bn:00086519v
+reden#v	bn:00094089v	bn:00082333v
+kleben#v	bn:00088905v	bn:00082344v
+bedenken#v	bn:00085650v	bn:00092765v
+kündigen#v	bn:00084451v
+geschehen#v	bn:00085337v
+zugehen#v	bn:00085337v
+sterben#v	bn:00086789v	bn:00084343v
+trauen#v	bn:00086019v	bn:00090675v
+gelten#v	bn:00083240v	bn:00082706v
+erhalten#v	bn:00089407v	bn:00088208v
+versichern#v	bn:00082881v	bn:00085913v
+erweitern#v	bn:00087849v	bn:00095770v
+engagieren#v	bn:00085427v	bn:00087576v
+demonstrieren#v	bn:00086568v
+verschwinden#v	bn:00086879v
+verstoßen#v	bn:00083791v
+vorliegen#v	bn:00085331v
+verdienen#v	bn:00086670v	bn:00084089v
+holen#v	bn:00084061v	bn:00084089v	bn:00084389v
+vollziehen#v	bn:00088916v	bn:00091146v
+leisten#v	bn:00086279v	bn:00082441v	bn:00086809v
+erweisen#v	bn:00095259v	bn:00092109v
+befassen#v	bn:00085428v	bn:00094914v
+einschränken#v	bn:00083834v
+rücken#v	bn:00088456v
+bekennen#v	bn:00085511v
+nützen#v	bn:00095474v
+berufen#v	bn:00082412v	bn:00082716v
+unterstützen#v	bn:00082995v	bn:00094612v
+präsentieren#v	bn:00091980v	bn:00082273v
+widmen#v	bn:00086761v
+identifizieren#v	bn:00089578v
+versammeln#v	bn:00082847v	bn:00082846v
+verfolgen#v	bn:00091182v	bn:00088433v	bn:00084831v	bn:00088428v
+verurteilen#v	bn:00085548v
+beschränken#v	bn:00086154v
+gründen#v	bn:00082715v	bn:00083141v
+ärgern#v	bn:00082610v	bn:00082611v
+setzen#v	bn:00093413v	bn:00093778v
+wundern#v	bn:00090682v
+empfehlen#v	bn:00082418v
+vorschreiben#v	bn:00088990v
+beschweren#v	bn:00085471v
+fressen#v	bn:00088574v
+zurückgeben#v	bn:00085351v

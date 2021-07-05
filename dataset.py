@@ -5,7 +5,8 @@ import jsonpickle
 
 """
 Defines the data format for the pipeline scripts train/eval for wsd.
-Files are lists of json objects that each must contain the following fields for EWISER processsing:
+Files are lists of json objects, each representing a single training/disambiguation instance that must 
+contain the following fields for EWISER processsing:
     'label': String, Gold label for disambiguation. This must be either wordnet offsets or babelnet ids.
     'lemma': String, target lemma for disambiguation.
     'upos': String, target pos. Must be either 'NOUN', 'VERB', 'ADJ' or 'ADV'
@@ -17,9 +18,16 @@ Files are lists of json objects that each must contain the following fields for 
         'begin': Integer, index of the first character of the token in the text.
         'end': Integer, index of the last character of the token in the text
         'is_pivot': Boolean, whether or not this is the target token for the label
-        
-Entries can contain additional fields without interfering, but they will not be used/considered for EWISER
+Optional fields for instances are:
+    'pivot_start': Integer, index of the first character of the target word
+    'pivot_end': Integer, index of the last character of the target word
+    'sentence': String, complete sentence.
+    'source_id': String, arbitary identification for the source of the instance
+Instances can contain additional fields without interfering, but they will not be used/considered by these functions.
+Its important that the 'lemma' and 'pos' field for the whole instance matches those for the specific target token. 
 """
+
+VALID_LABELTYPES = ["wnoffsets", "bnids", "gn"]
 
 
 class WSDToken:
@@ -34,22 +42,31 @@ class WSDToken:
         
         
 class WSDEntry:
-    def __init__(self, label, lemma, upos, tokens=[], sentence=None, source_id=None):
+    def __init__(self, label, lemma, upos, tokens=[], sentence=None, source_id=None, pivot_start=None, pivot_end=None):
         self.label = label
         self.lemma = lemma
         self.tokens = tokens
         self.sentence = sentence
         self.upos = upos
         self.source_id = source_id
+        self.pivot_start = pivot_start
+        self.pivot_end = pivot_end
         
         
 class WSDData:
     def __init__(self, name, lang, labeltype, entries=[]):
-        assert labeltype in ["wnoffsets", "bnids", "gnet"]
+        assert labeltype in VALID_LABELTYPES
         self.name = name
         self.entries = entries
         self.lang = lang
         self.labeltype = labeltype
+
+    @classmethod
+    def _load_opt(cls, entry, key, default=None):
+        if key in entry:
+            return entry[key]
+        else:
+            return default
         
     @classmethod
     def load(cls, json_path):
@@ -64,11 +81,11 @@ class WSDData:
                 target_lemma = entry["lemma"]
                 entry_pos = entry["upos"]
                 
-                if "sentence" in entry:
-                    sentence = entry["sentence"]
-                else:
-                    sentence = None
-                    
+                sentence = cls._load_opt(entry, "sentence", default=None)
+                source = cls._load_opt(entry, "source_id", default=None)
+                pivot_start = cls._load_opt(entry, "pivot_start", default=None)
+                pivot_end = cls._load_opt(entry, "pivot_end", default=None)
+
                 l_tokens = []
                 if "tokens" in entry:
                     tokens = entry["tokens"]
@@ -79,18 +96,28 @@ class WSDData:
                         if "upos" in token:
                             upos = token["upos"]
                         else:
-                            # TODO: Do the pos to upos conversion
-                            pass
+                            # Do the pos to upos conversion, assuming STTS tagset
+                            upos = pos_2_upos(pos)
                         begin = token["begin"]
                         end = token["end"]
-                        is_pivot = token["pivot"]
+                        is_pivot = token["is_pivot"]
                         l_tokens.append(WSDToken(form, lemma, pos, begin, end, upos=upos, is_pivot=is_pivot))
                         
-                entries.append(WSDEntry(label, target_lemma, entry_pos, tokens=l_tokens, sentence=sentence))
+                entries.append(
+                    WSDEntry(
+                        label, 
+                        target_lemma, 
+                        entry_pos, 
+                        tokens=l_tokens, 
+                        sentence=sentence, 
+                        source_id=source,
+                        pivot_start=pivot_start,
+                        pivot_end=pivot_end
+                        ))
             return cls(name, lang, labeltype, entries)
                 
     def save(self, outpath):
-        out = jsonpickle.encode(self.entries, unpicklable=False, indent=2)
+        out = jsonpickle.encode(self, unpicklable=False, indent=2)
         with open(outpath, "w+", encoding="utf8") as f:
             f.write(out)
             
@@ -99,6 +126,35 @@ class WSDData:
         assert self.lang == other.lang
         self.name = self.name + "+" + other.name
         self.entries.extend(other.entries)
+        
+    def map_labels(self, mapping_dict, new_labeltype, no_map="skip"):
+        # TODO: What to do if we have multiple values for keys in dict?
+        mapped_entries = []
+        for entry in self.entries:
+            if entry.label in mapping_dict:
+                entry.label = mapping_dict[entry.label]
+                mapped_entries.append(entry)
+            else:
+                if no_map == "skip":
+                    continue
+                elif no_map == "raise":
+                    raise RuntimeWarning("No mapping for entries with label {}".format(entry.label)) 
+        self.entries = mapped_entries
+        self.labeltype = new_labeltype
+
+
+def load_mapping(map_path, first_only=True):
+    map_dict = {}
+    with open(map_path, "rt", encoding="utf8") as f:
+        for line in f:
+            line = line.strip().split("\t")
+            key = line[0]
+            if first_only:
+                value = line[1]
+            else:
+                value = line[1:]
+            map_dict[key] = value
+    return map_dict         
 
 
 def train_test_split(dataset: WSDData, ratio_eval=0.2, ratio_test=0.2):
@@ -156,3 +212,63 @@ def train_test_split(dataset: WSDData, ratio_eval=0.2, ratio_test=0.2):
 def tokenize(dataset: WSDData):
     # Run the Java UIMA thingy somehow
     pass
+    
+    
+def pos_2_upos(pos):
+    STTS = {"$(": "PUNCT",
+            "$,": "PUNCT",
+            "$.": "PUNCT",
+            "ADJA": "ADJ",
+            "ADJD": "ADJ",
+            "ADV": "ADV",
+            "APPO": "ADP",
+            "APPR": "ADP",
+            "APPRART": "ADP",
+            "APZR": "ADP",
+            "ART": "DET",
+            "CARD": "NUM",
+            "FM": "X",
+            "ITJ": "INTJ",
+            "KOKOM": "CCONJ",
+            "KON": "CCONJ",
+            "KOUI": "SCONJ",
+            "KOUS": "SCONJ",
+            "NE": "PROPN",
+            "NN": "NOUN",
+            "PAV": "ADV",
+            "PDAT": "DET",
+            "PDS": "PRON",
+            "PIAT": "DET",
+            "PIDAT": "DET",
+            "PIS": "PRON",
+            "PPER": "PRON",
+            "PPOSAT": "DET",
+            "PPOSS": "PRON",
+            "PRELAT": "DET",
+            "PRELS": "PRON",
+            "PRF": "PRON",
+            "PROAV": "ADV",
+            "PTKA": "PART",
+            "PTKANT": "PART",
+            "PTKNEG": "PART",
+            "PTKVZ": "ADP",
+            "PTKZU": "PART",
+            "PWAT": "DET",
+            "PWAV": "ADV",
+            "PWS": "PRON",
+            "TRUNC": "X",
+            "VAFIN": "AUX",
+            "VAIMP": "AUX",
+            "VAINF": "AUX",
+            "VAPP": "AUX",
+            "VMFIN": "VERB",
+            "VMINF": "VERB",
+            "VMPP": "VERB",
+            "VVFIN": "VERB",
+            "VVIMP": "VERB",
+            "VVINF": "VERB",
+            "VVIZU": "VERB",
+            "VVPP": "VERB",
+            "XY": "X"
+            }
+    return STTS[pos]

@@ -1,6 +1,8 @@
 .ipynb_checkpoints/*
 res/.ipynb_checkpoints/*
 res/embeddings/*
+res/corpora/tueba/tueba*
+res/experiments/tueba/test/tueba*
 notebook/.ipynb_checkpoints/*
 notebooks/*
 corpora/*
