@@ -8,6 +8,11 @@ from dataset import WSDData, train_test_split
 
 # Takes a dir with preprocessed corpora and relevant dictionaries, a model output dir, and a bunch of ewiser params
 def train(out_dir: str, modelname: str, **params):
+
+    # Epochs and learning rates have to be handled separately
+    shell_params = {"epochs1": 50,
+                    "epochs2": 50}
+
     # Setup params for training script
     DEFAULT_PARAMS = {
         "arch": "linear_seq",
@@ -32,9 +37,7 @@ def train(out_dir: str, modelname: str, **params):
         "decoder-norm": True,
         "decoder-last-activation": True,
         "decoder-activation": "swish",
-        "no-epoch-checkpoints": True,
-        "epochs1":  50,
-        "epochs2":  20
+        "no-epoch-checkpoints": True
     }
 
     for key, value in DEFAULT_PARAMS.items():
@@ -57,12 +60,12 @@ def train(out_dir: str, modelname: str, **params):
                 "EMBEDDINGS='{}'".format(
                     os.path.join(preprocess.EMB_PATH, '/sensembert+lmms.svd512.synset-centroid.vec')),
                 "EDGES='{}'".format(preprocess.EDGE_PATH),
-                "EPOCHS_1={}".format(params["epochs1"]),
-                "EPOCHS_2={}\n".format(params["epochs2"]),
+                "EPOCHS_1={}".format(shell_params["epochs1"]),
+                "EPOCHS_2={}\n".format(shell_params["epochs2"]),
                 # Savedir
                 "SAVEDIR='{}'".format(os.path.join(out_dir, modelname)),
                 "mkdir -p ${SAVEDIR}\n",
-                "args1=(\\\n{}\n)\n".format("\\\n".join(arg_list)),
+                "args1=( \\\n{}\n)\n".format(" \\\n".join(arg_list)),
                 "args2=( --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv )\n",
                 # Stage 1 training
                 "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR '${args1[@]}' '${args2[@]}' --lr 1e-4 --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed --decoder-structured-logits-trainable\n",
