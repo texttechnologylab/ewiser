@@ -42,7 +42,7 @@ class WSDToken:
         
         
 class WSDEntry:
-    def __init__(self, label: str, lemma: str, upos: str, tokens=[], 
+    def __init__(self, label: str, lemma: str, upos: str, tokens=[],
                  sentence=None, source_id=None, pivot_start=None, pivot_end=None):
         self.label = label
         self.lemma = lemma

@@ -51,32 +51,27 @@ def train(out_dir: str, modelname: str, **params):
                 arg_list.append("--{}".format(key))
 
     # Build shell file
-    outlines = ["!/bin/bash",
+    outlines = ["#!/bin/bash",
                 "MODEL='{}'".format(modelname),
                 "CORPUS_DIR='{}'".format(out_dir),
                 "EMBEDDINGS='{}'".format(
                     os.path.join(preprocess.EMB_PATH, '/sensembert+lmms.svd512.synset-centroid.vec')),
                 "EDGES='{}'".format(preprocess.EDGE_PATH),
                 "EPOCHS_1={}".format(params["epochs1"]),
-                "EPOCHS_2={}".format(params["epochs2"]),
+                "EPOCHS_2={}\n".format(params["epochs2"]),
                 # Savedir
                 "SAVEDIR='{}'".format(os.path.join(out_dir, modelname)),
-                "mkdir -p ${SAVEDIR}",
-                "args1=(\\\n  {}\n)".format("\\\n".join(arg_list)),
-                "args2= --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits \
-                    --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv",
+                "mkdir -p ${SAVEDIR}\n",
+                "args1=(\\\n  {}\n)\n".format("\\\n".join(arg_list)),
+                "args2= (--decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv)\n",
                 # Stage 1 training
-                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR '${args1[@]}' '${args2[@]}' --lr 1e-4 \
-                    --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed \
-                    --decoder-structured-logits-trainable",
+                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR '${args1[@]}' '${args2[@]}' --lr 1e-4 --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed --decoder-structured-logits-trainable\n",
                 # Setup stage 2
                 "mkdir -p $SAVEDIR/stage2",
                 "cp $SAVEDIR/checkpoint_best.pt $SAVEDIR/stage2/init.pt",
-                "args3=(--restore-file $SAVEDIR/stage2/init.pt --decoder-structured-logits-trainable \
-                    --only-load-weights --reset-optimizer --reset-dataloader --reset-meters)",
+                "args3=(--restore-file $SAVEDIR/stage2/init.pt --decoder-structured-logits-trainable --only-load-weights --reset-optimizer --reset-dataloader --reset-meters)\n",
                 # Stage 2 training
-                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR '${args1[@]}' #${args2[@]}' '${args3[@]}' \
-                    --lr 1e-5 --save-dir $SAVEDIR/stage2 --max-epoch $EPOCHS_2"]
+                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR '${args1[@]}' '${args2[@]}' '${args3[@]}' --lr 1e-5 --save-dir $SAVEDIR/stage2 --max-epoch $EPOCHS_2"]
 
     with open("train_bash.sh", "w", encoding="utf8") as f:
         for line in outlines:
