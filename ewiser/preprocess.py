@@ -1,6 +1,7 @@
 import os
 import shutil
 from lxml import etree as et
+from typing import List
 
 from fairseq.data import Dictionary
 
@@ -18,7 +19,7 @@ EMB_PATH = os.path.abspath(os.path.join(dir_path, "../res/embeddings"))
 EDGE_PATH = os.path.abspath(os.path.join(dir_path, "../res/edges"))
 
 
-def set_dicts(datasets: list[ds.WSDData], built_ins=False):
+def set_dicts(datasets: List[ds.WSDData], built_ins=False):
     # TODO: built ins
     # Write out the dictionaries
     # Note: This might not work properly for english corpora?
@@ -180,8 +181,8 @@ def make_raganato(dataset: ds.WSDData, directory):
             f.write(key + "\n")
 
 
-def preproc(trainsets: list[ds.WSDData],
-            evalsets: list[ds.WSDData],
+def preproc(trainsets: List[ds.WSDData],
+            evalsets: List[ds.WSDData],
             directory: str,
             max_length=100,
             on_error="skip",

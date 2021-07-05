@@ -31,7 +31,7 @@ VALID_LABELTYPES = ["wnoffsets", "bnids", "gn"]
 
 
 class WSDToken:
-    def __init__(self, form, lemma, pos, begin, end, upos=None, is_pivot=False):
+    def __init__(self, form: str, lemma: str, pos: str, begin: str, end: str, upos=None, is_pivot=False):
         self.form = form
         self.lemma = lemma
         self.pos = pos
@@ -42,7 +42,7 @@ class WSDToken:
         
         
 class WSDEntry:
-    def __init__(self, label, lemma, upos, tokens=[], sentence=None, source_id=None, pivot_start=None, pivot_end=None):
+    def __init__(self, label: str, lemma: str, upos: str, tokens=[], sentence=None, source_id=None, pivot_start=None, pivot_end=None):
         self.label = label
         self.lemma = lemma
         self.tokens = tokens
@@ -54,7 +54,7 @@ class WSDEntry:
         
         
 class WSDData:
-    def __init__(self, name, lang, labeltype, entries=[]):
+    def __init__(self, name: str, lang: str, labeltype: str, entries=[]):
         assert labeltype in VALID_LABELTYPES
         self.name = name
         self.entries = entries
@@ -62,14 +62,14 @@ class WSDData:
         self.labeltype = labeltype
 
     @classmethod
-    def _load_opt(cls, entry, key, default=None):
+    def _load_opt(cls, entry: WSDEntry, key: str, default=None):
         if key in entry:
             return entry[key]
         else:
             return default
         
     @classmethod
-    def load(cls, json_path):
+    def load(cls, json_path: str):
         with open(json_path, "r", encoding="utf8") as f:
             loaded = json.load(f)
             lang = loaded["lang"]
@@ -116,18 +116,18 @@ class WSDData:
                         ))
             return cls(name, lang, labeltype, entries)
                 
-    def save(self, outpath):
+    def save(self, outpath: str):
         out = jsonpickle.encode(self, unpicklable=False, indent=2)
         with open(outpath, "w+", encoding="utf8") as f:
             f.write(out)
             
-    def add(self, other):
+    def add(self, other: WSDData):
         """ Merges the other dataset into this one. This can only be done if both have the same language"""
         assert self.lang == other.lang
         self.name = self.name + "+" + other.name
         self.entries.extend(other.entries)
         
-    def map_labels(self, mapping_dict, new_labeltype, no_map="skip"):
+    def map_labels(self, mapping_dict, new_labeltype: str, no_map="skip"):
         # TODO: What to do if we have multiple values for keys in dict?
         mapped_entries = []
         for entry in self.entries:
@@ -143,7 +143,7 @@ class WSDData:
         self.labeltype = new_labeltype
 
 
-def load_mapping(map_path, first_only=True):
+def load_mapping(map_path: str, first_only=True):
     map_dict = {}
     with open(map_path, "rt", encoding="utf8") as f:
         for line in f:
@@ -214,7 +214,7 @@ def tokenize(dataset: WSDData):
     pass
     
     
-def pos_2_upos(pos):
+def pos_2_upos(pos: str):
     STTS = {"$(": "PUNCT",
             "$,": "PUNCT",
             "$.": "PUNCT",
