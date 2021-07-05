@@ -12,7 +12,7 @@ from ewiser.fairseq_ext.data.wsd_dataset import WSDDatasetBuilder
 
 VALID_POS = ["NOUN", "VERB", "ADJ", "ADJ"]
 VALID_LABELS = ["wnoffsets", "bnids"]
-# These is not freely adjustable as they are referenced in EWISER code itself
+# These are not freely adjustable as they are referenced in EWISER code itself
 dir_path = os.path.dirname(os.path.realpath(__file__))
 DICT_PATH = os.path.abspath(os.path.join(dir_path, "../res/dictionaries"))
 EMB_PATH = os.path.abspath(os.path.join(dir_path, "../res/embeddings"))

@@ -53,12 +53,14 @@ def train(out_dir: str, modelname: str, **params):
             if value:
                 arg_list.append("--{}".format(key))
 
+    print(preprocess.EMB_PATH)
+    print(preprocess.EDGE_PATH)
     # Build shell file
     outlines = ["#!/bin/bash",
                 "MODEL='{}'".format(modelname),
                 "CORPUS_DIR='{}'".format(out_dir),
                 "EMBEDDINGS='{}'".format(
-                    os.path.join(preprocess.EMB_PATH, '/sensembert+lmms.svd512.synset-centroid.vec')),
+                    os.path.join(preprocess.EMB_PATH, 'sensembert+lmms.svd512.synset-centroid.vec')),
                 "EDGES='{}'".format(preprocess.EDGE_PATH),
                 "EPOCHS_1={}".format(shell_params["epochs1"]),
                 "EPOCHS_2={}\n".format(shell_params["epochs2"]),
