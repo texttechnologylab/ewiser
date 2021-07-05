@@ -7,7 +7,6 @@ from fairseq.data import Dictionary
 
 import dataset as ds
 
-from ewiser.fairseq_ext.data.dictionaries import ResourceManager
 from ewiser.fairseq_ext.data.wsd_dataset import WSDDatasetBuilder
 
 VALID_POS = ["NOUN", "VERB", "ADJ", "ADJ"]
@@ -17,6 +16,12 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 DICT_PATH = os.path.abspath(os.path.join(dir_path, "../res/dictionaries"))
 EMB_PATH = os.path.abspath(os.path.join(dir_path, "../res/embeddings"))
 EDGE_PATH = os.path.abspath(os.path.join(dir_path, "../res/edges"))
+
+"""
+Functions for preprocessing corpora into EWISER-appropriate formats and creating relevant data files.
+Note that most functions assume that any labels appearing the testset will also appear in the training set, 
+dictionaries may not be consistent otherwise
+"""
 
 
 def set_dicts(datasets: List[ds.WSDData], built_ins=False):
@@ -184,6 +189,7 @@ def make_raganato(dataset: ds.WSDData, directory):
 def preproc(trainsets: List[ds.WSDData],
             evalsets: List[ds.WSDData],
             directory: str,
+            data_for_dicts_only: List[ds.WSDData] = [],
             max_length=100,
             on_error="skip",
             quiet=False):
@@ -195,15 +201,14 @@ def preproc(trainsets: List[ds.WSDData],
         print("Could not create data directories")
 
     # Make dictionaries
-    created_dicts = set_dicts(trainsets + evalsets)
+    created_dicts = set_dicts(trainsets + evalsets + data_for_dicts_only)
     # Copy form dictionary that we need for preprocessing and training
+    # Copy other dictionaries as well for backup
     for dictpath in created_dicts:
         shutil.copy(dictpath, directory)
-    # Copy other dictionaries as well for backup
 
     # Setup EWISER preproc
     dictionary = Dictionary.load(os.path.join(directory, "dict.txt"))
-    output_dictionary = ResourceManager.get_senses_dictionary(use_synsets=True)
 
     # Make raganatos and create preprocessed files from those
     print("Creating/processing training data...")

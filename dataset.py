@@ -5,7 +5,7 @@ import jsonpickle
 
 """
 Defines the data format for the pipeline scripts train/eval for wsd.
-Files are jsonobjects containing the following fields:
+Files are JSON Objects containing the following fields:
 'name': Arbitary name for the dataset
 'lang': Language for the dataset
 'labeltype': What type of labels this dataset uses. Must be one of ["wnoffsets", "bnids", "gn"].

@@ -53,8 +53,6 @@ def train(out_dir: str, modelname: str, **params):
             if value:
                 arg_list.append("--{}".format(key))
 
-    #print(preprocess.EMB_PATH)
-    #print(preprocess.EDGE_PATH)
     # Build shell file
     outlines = ["#!/bin/bash",
                 "MODEL='{}'".format(modelname),
@@ -68,15 +66,20 @@ def train(out_dir: str, modelname: str, **params):
                 "SAVEDIR='{}'".format(os.path.join(out_dir, modelname)),
                 "mkdir -p ${SAVEDIR}\n",
                 "args1=(\\\n{}\n)\n".format(" \\\n".join(arg_list)),
-                "args2=( --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv )\n",
+                "args2=( --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits"
+                " --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv )\n",
                 # Stage 1 training
-                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\" --lr 1e-4 --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed --decoder-structured-logits-trainable\n",
+                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\" --lr 1e-4"
+                " --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed"
+                " --decoder-structured-logits-trainable\n",
                 # Setup stage 2
                 "mkdir -p $SAVEDIR/stage2",
                 "cp $SAVEDIR/checkpoint_best.pt $SAVEDIR/stage2/init.pt",
-                "args3=(--restore-file $SAVEDIR/stage2/init.pt --decoder-structured-logits-trainable --only-load-weights --reset-optimizer --reset-dataloader --reset-meters)\n",
+                "args3=(--restore-file $SAVEDIR/stage2/init.pt --decoder-structured-logits-trainable"
+                " --only-load-weights --reset-optimizer --reset-dataloader --reset-meters)\n",
                 # Stage 2 training
-                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\" \"${args3[@]}\" --lr 1e-5 --save-dir $SAVEDIR/stage2 --max-epoch $EPOCHS_2"]
+                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\""
+                "\"${args3[@]}\" --lr 1e-5 --save-dir $SAVEDIR/stage2 --max-epoch $EPOCHS_2"]
 
     with open("train_bash.sh", "w", encoding="utf8") as f:
         for line in outlines:
@@ -101,10 +104,14 @@ def cli():
     parser.add_argument('--eval', required=False, type=str, nargs='*', help=
                         "JSON Datafiles that will be used for validation during training")
 
+    parser.add_argument('--test', required=False, type=str, nargs='*', help=
+                        "JSON Datafiles that you intend to use for testing. No actual testing is done, but "
+                        "dictionary entries are updated")
+
     # Plain datasets, that we will split ourselves
     parser.add_argument('--data', required=False, type=str, nargs='*', help=
-                        "JSON Datafiles that will be split into train/eval/test. Note that the test set will not be \
-                        used during training. This argument and train/eval are mutually exclusive!")
+                        "JSON Datafiles that will be split into train/eval/test. Note that the test set will not be "
+                        "used during training. This argument and train/eval are mutually exclusive!")
     # If we split we have to know ratios
     parser.add_argument("--ratio-eval", required=False, type=float, help=
                         "ratio of the datasets that will be used as evaluation data")
@@ -123,7 +130,7 @@ def cli():
 
     # Either we have args.data or args.train and args.eval
     assert (args.data is None and args.train is not None and args.eval is not None) or \
-           (args.data is not None and args.train is None and args.eval is None), \
+           (args.data is not None and args.train is None and args.eval is None and args.test is None), \
            "data and train/eval are mutually excluve arguments."
 
     # Load data
@@ -148,10 +155,14 @@ def cli():
         for datapath in args.eval:
             dataset = WSDData.load(datapath)
             evalsets.append(dataset)
+        if args.test is not None:
+            for datapath in args.test:
+                dataset = WSDData.load(datapath)
+                testsets.append(dataset)
 
     print("Preprocessing...")
     # Do preprocessing
-    preprocess.preproc(trainsets, evalsets, args.train_dir)
+    preprocess.preproc(trainsets, evalsets, args.train_dir, data_for_dicts_only=testsets)
 
     # Write out testsets as raganato for convenience
     if testsets:
