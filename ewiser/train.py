@@ -53,8 +53,8 @@ def train(out_dir: str, modelname: str, **params):
             if value:
                 arg_list.append("--{}".format(key))
 
-    print(preprocess.EMB_PATH)
-    print(preprocess.EDGE_PATH)
+    #print(preprocess.EMB_PATH)
+    #print(preprocess.EDGE_PATH)
     # Build shell file
     outlines = ["#!/bin/bash",
                 "MODEL='{}'".format(modelname),
