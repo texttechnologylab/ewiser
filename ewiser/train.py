@@ -62,7 +62,7 @@ def train(out_dir: str, modelname: str, **params):
                 # Savedir
                 "SAVEDIR='{}'".format(os.path.join(out_dir, modelname)),
                 "mkdir -p ${SAVEDIR}\n",
-                "args1=(\\\n  {}\n)\n".format("\\\n".join(arg_list)),
+                "args1=(\\\n{}\n)\n".format("\\\n".join(arg_list)),
                 "args2=( --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv )\n",
                 # Stage 1 training
                 "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR '${args1[@]}' '${args2[@]}' --lr 1e-4 --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed --decoder-structured-logits-trainable\n",
@@ -77,7 +77,7 @@ def train(out_dir: str, modelname: str, **params):
         for line in outlines:
             f.write(line + "\n")
 
-    subprocess.call("./train_bash.sh")
+    subprocess.call("bash train_bash.sh")
 
 
 # CLI will take datasets as files, tmpdir, modeldir and any params, then load datasets and call train
