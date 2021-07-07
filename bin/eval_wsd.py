@@ -2,6 +2,7 @@ import os
 import pickle
 from collections import defaultdict
 from pathlib import Path
+from typing import List
 
 import torch
 from argparse import ArgumentParser
@@ -9,10 +10,10 @@ from argparse import ArgumentParser
 from fairseq.data import Dictionary
 from torch.utils.data import DataLoader
 
-from ewiser.fairseq_ext.data.dictionaries import ResourceManager, SequenceLabelingTaskKind, TargetManager, MFSManager, \
+from ewiser.fairseq_ext.data.dictionaries import ResourceManager, SequenceLabelingTaskKind, TargetManager, \
     DEFAULT_DICTIONARY
 from ewiser.fairseq_ext.data.utils import patched_lemma_from_key, make_offset
-from ewiser.fairseq_ext.data.wsd_dataset import WSDDataset, WSDConcatDataset
+from ewiser.fairseq_ext.data.wsd_dataset import WSDDataset
 from ewiser.fairseq_ext.models.sequence_tagging import LinearTaggerEnsembleModel
 from ewiser.fairseq_ext.tasks.sequence_tagging import SequenceLabelingTask
 
@@ -28,7 +29,7 @@ def add_bias_if_missing(checkpoint, path=''):
     print('Fixing bias in output layer...')
 
     weight = state_dict['decoder.logits.weight']
-    bias = weight.new_zeros([weight.size(0),], requires_grad=False)
+    bias = weight.new_zeros([weight.size(0), ], requires_grad=False)
     state_dict['decoder.logits.bias'] = bias
     if path:
         print('Fixed checkpoint saved!')
@@ -37,47 +38,57 @@ def add_bias_if_missing(checkpoint, path=''):
     return checkpoint
 
 
-def main(args):
+def predict(checkpoint_paths: List[str],
+            xmls: str,
+            device: str = "cuda",
+            dict_path: str = DEFAULT_DICTIONARY,
+            lang: str = "en",
+            max_length: int = 100,
+            quiet: bool = False,
+            read_by: str = "text",
+            batch_size: int = 1,
+            on_error: str = "skip",
+            predictions: str = None):
     
-    print("Loading checkpoints: " + " ".join(args.checkpoints))
+    print("Loading checkpoints: " + " ".join(checkpoint_paths))
 
-    data = torch.load(args.checkpoints[0], map_location='cpu', )
+    data = torch.load(checkpoint_paths[0], map_location='cpu', )
     model_args = data['args']
-    model_args.cpu = 'cuda' not in args.device
-    model_args.context_embeddings_cache = args.device
+    model_args.cpu = 'cuda' not in device
+    model_args.context_embeddings_cache = device
     state = data['model']
-    dictionary = Dictionary.load(args.dict)
+    dictionary = Dictionary.load(dict_path)
     output_dictionary = ResourceManager.get_offsets_dictionary()
 
     target_manager = TargetManager(SequenceLabelingTaskKind.WSD)
     task = SequenceLabelingTask(model_args, dictionary, output_dictionary)
 
-    if len(args.checkpoints) == 1:
+    if len(checkpoint_paths) == 1:
         model = task.build_model(model_args).cpu().eval()
         model.load_state_dict(state, strict=True)
     else:
-        checkpoints = LinearTaggerEnsembleModel.make_args_iterator(args.checkpoints)
+        checkpoints = LinearTaggerEnsembleModel.make_args_iterator(checkpoint_paths)
         model = LinearTaggerEnsembleModel.build_model(
             checkpoints,
             task,
         )
         
     model = model.eval()
-    model.to(args.device)
+    model.to(device)
 
     datasets = []
 
-    for corpus in args.xmls:
+    for corpus in xmls:
         if corpus.endswith('.data.xml'):
             dataset = WSDDataset.read_raganato(
                 corpus,
                 dictionary,
                 use_synsets=True,
-                lang=args.lang,
-                max_length=args.max_length,
+                lang=lang,
+                max_length=max_length,
                 on_error='keep',
-                quiet=args.quiet,
-                read_by=args.read_by,
+                quiet=quiet,
+                read_by=read_by,
             )
         else:
             with open(corpus, 'rb') as pkl:
@@ -85,15 +96,16 @@ def main(args):
 
         datasets.append(dataset)
 
-    corpora = zip(args.xmls, datasets)
+    corpora = zip(xmls, datasets)
 
+    per_corp_results = {}
     for corpus, dataset in corpora:
 
         hit, tot = 0, 0
         all_answers = {}
-        for sample_original in DataLoader(dataset, collate_fn=dataset.collater, batch_size=args.batch_size):
+        for sample_original in DataLoader(dataset, collate_fn=dataset.collater, batch_size=batch_size):
             with torch.no_grad():
-                net_output = model(**{k: v.to(args.device) if isinstance(v, torch.Tensor) else v
+                net_output = model(**{k: v.to(device) if isinstance(v, torch.Tensor) else v
                                       for k, v in sample_original['net_input'].items()})
                 lprobs = model.get_normalized_probs(net_output, log_probs=True).cpu()
 
@@ -118,8 +130,8 @@ def main(args):
                         bnids_map = ResourceManager.get_bnids_to_offset_map()
                     o = bnids_map.get(g)
                     if o is None:
-                        if args.on_error == 'keep':
-                            o = {g,}
+                        if on_error == 'keep':
+                            o = {g, }
                             gold_answers[trg] |= o
                     else:
                         gold_answers[trg] |= o
@@ -131,14 +143,14 @@ def main(args):
                     except Exception:
                         o = None
                     if o is None:
-                        if args.on_error == 'keep':
+                        if on_error == 'keep':
                             gold_answers[trg].add(g)
                     else:
                         gold_answers[trg].add(o)
 
         all_answers = {k: output_dictionary.symbols[v] for k, v in all_answers.items()}
 
-        if args.on_error == 'skip':
+        if on_error == 'skip':
             N = len([t for t, aa in gold_answers.items() if aa])
         else:
             N = len(gold_answers)
@@ -157,7 +169,7 @@ def main(args):
 
         M = 0
         for k, gg in gold_answers.items():
-            if args.on_error == 'skip' and (not gg):
+            if on_error == 'skip' and (not gg):
                 continue
             valid = False
             for g in gg:
@@ -187,16 +199,19 @@ def main(args):
         print(corpus)
         print(f'P: {precision}\tR: {recall}\tF1: {f1}\tN/T:{N}/{T}\tY/N/M/S: {ok}/{notok}/{M}/{T-N}')
 
-        if args.predictions:
-            if not os.path.exists(args.predictions):
-                os.mkdir(args.predictions)
+        if predictions:
+            if not os.path.exists(predictions):
+                os.mkdir(predictions)
             name = ".".join(os.path.split(corpus)[-1].split('.')[:-2]) + '.results.key.txt'
-            path = os.path.join(args.predictions, name)
+            path = os.path.join(predictions, name)
             with open(path, 'w') as results_file:
                 for k, v in sorted(all_answers.items()):
                     if not v or v == '<unk>':
                         v = ''
                     results_file.write(k + ' ' + v + '\n')
+        # return gold and best_pred dictionaries
+        per_corp_results[corpus] = (gold_answers, all_answers)
+    return per_corp_results
 
 
 if __name__ == "__main__":
@@ -251,10 +266,29 @@ if __name__ == "__main__":
     if len(checkpoints) > 1 and not args.ensemble:
         for chkpt in checkpoints:
             args.checkpoints = [chkpt]
-            main(args)
+            predict(checkpoint_paths=args.checkpoints,
+                    xmls=args.xmls,
+                    device=args.device,
+                    dict_path=args.dict,
+                    lang=args.lang,
+                    max_length=args.max_length,
+                    quiet=args.quiet,
+                    read_by=args.read_by,
+                    batch_size=args.batch_size,
+                    on_error=args.on_error,
+                    predictions=args.predictions
+                    )
     else:
         args.checkpoints = checkpoints
-        main(args)
-
-
-
+        predict(checkpoint_paths=args.checkpoints,
+                xmls=args.xmls,
+                device=args.device,
+                dict_path=args.dict,
+                lang=args.lang,
+                max_length=args.max_length,
+                quiet=args.quiet,
+                read_by=args.read_by,
+                batch_size=args.batch_size,
+                on_error = args.on_error,
+                predictions=args.predictions
+                )

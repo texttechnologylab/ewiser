@@ -26,6 +26,7 @@ dictionaries may not be consistent otherwise
 
 def set_dicts(datasets: List[ds.WSDData], built_ins=False):
     # TODO: built ins
+    # TODO: option to add dictionaries from some other directory
     # Write out the dictionaries
     # Note: This might not work properly for english corpora?
     print("Creating dictionary entries...")
@@ -176,7 +177,10 @@ def make_raganato(dataset: ds.WSDData, directory):
 
     # Write out files
     tree = et.ElementTree(root)
-    tree.write(os.path.join(directory, dataset.name + ".data.xml"),
+    outpath = os.path.join(directory, dataset.name + ".data.xml")
+    if os.path.exists(outpath):
+        raise RuntimeError("Cannot create new datafile {} since it already exists!".format(outpath))
+    tree.write(outpath,
                encoding="utf-8",
                pretty_print=True,
                xml_declaration=True)
@@ -184,6 +188,8 @@ def make_raganato(dataset: ds.WSDData, directory):
     with open(os.path.join(directory, dataset.name + ".gold.key.txt"), "w", encoding="utf8") as f:
         for key in gold_keys:
             f.write(key + "\n")
+
+    return outpath
 
 
 def preproc(trainsets: List[ds.WSDData],
