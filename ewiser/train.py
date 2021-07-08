@@ -97,19 +97,19 @@ def cli():
     parser = argparse.ArgumentParser(description="Training script for ewiser")
 
     # Training sets
-    parser.add_argument('--train', required=False, type=str, nargs='*', help=
+    parser.add_argument("--train", required=False, type=str, nargs='*', help=
                         "JSON Datafiles that should be used for training")
 
     # Evaluation sets
-    parser.add_argument('--eval', required=False, type=str, nargs='*', help=
+    parser.add_argument("--eval", required=False, type=str, nargs='*', help=
                         "JSON Datafiles that will be used for validation during training")
 
-    parser.add_argument('--test', required=False, type=str, nargs='*', help=
+    parser.add_argument("--test", required=False, type=str, nargs='*', help=
                         "JSON Datafiles that you intend to use for testing. No actual testing is done, but "
                         "dictionary entries are updated")
 
     # Plain datasets, that we will split ourselves
-    parser.add_argument('--data', required=False, type=str, nargs='*', help=
+    parser.add_argument("--data", required=False, type=str, nargs='*', help=
                         "JSON Datafiles that will be split into train/eval/test. Note that the test set will not be "
                         "used during training. This argument and train/eval are mutually exclusive!")
     # If we split we have to know ratios
@@ -125,6 +125,15 @@ def cli():
     # Directory in the training directory for models
     parser.add_argument("--model-dir", required=True, type=str, help=
                         "Directory ")
+
+    # Path to dictionaries for already created xml format files
+    parser.add_argument("--dict-dir", required=False, type=str, help=
+                        "Directory containing additional dictionary files.\n"
+                        "Dictionaries are normally built, saved and set during preprocessing."
+                        " If you setup two training runs, the set dictionaries will match the last run, not the first."
+                        " It is important that the dictionaries used during training match those used during "
+                        "preprocessing to avoid errors. This parameter can be used to point to the directory where the "
+                        "specific dictionaries were saved.")
 
     args = parser.parse_args()
 
@@ -162,7 +171,7 @@ def cli():
 
     print("Preprocessing...")
     # Do preprocessing
-    preprocess.preproc(trainsets, evalsets, args.train_dir, data_for_dicts_only=testsets)
+    preprocess.preproc(trainsets, evalsets, args.train_dir, data_for_dicts_only=testsets, dict_dir=args.dict_dir)
 
     # Write out testsets as raganato for convenience
     if testsets:

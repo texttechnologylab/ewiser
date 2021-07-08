@@ -24,9 +24,9 @@ dictionaries may not be consistent otherwise
 """
 
 
-def set_dicts(datasets: List[ds.WSDData], built_ins=False):
+def set_dicts(datasets: List[ds.WSDData], dict_dir: str = None, built_ins: bool = False):
     # TODO: built ins
-    # TODO: option to add dictionaries from some other directory
+    # dict_dir can be used to load dictionaries that were created previously and add them
     # Write out the dictionaries
     # Note: This might not work properly for english corpora?
     print("Creating dictionary entries...")
@@ -55,14 +55,59 @@ def set_dicts(datasets: List[ds.WSDData], built_ins=False):
             wn = line[2]
             wn2bn[wn] = bn
 
-    # Create new current ones using datasets and optionally built ins.
+    # Create new current ones using datasets, directory and optionally built ins.
+
     forms = {}
     lemma_pos_lang = {}
     lemma_pos2offsets_lang = {}
-    paths = []
     for lang in langs:
         lemma_pos_lang[lang] = set()
         lemma_pos2offsets_lang[lang] = {}
+
+    # Load dictionaries from directory
+    if dict_dir:
+        with open(os.path.join(dict_dir, "dict.txt"), "rt", encoding="utf8") as f:
+            for line in f:
+                line = line.strip().split(" ")
+                form, freq = line
+                forms[form] = freq
+
+        # lemmapos dictionaries for each language
+        lemma_pos_files = [filename for filename in os.listdir(dict_dir) if
+                           os.path.isfile(os.path.join(dict_dir, filename)) and filename.startswith("lemma_pos.")]
+        for lemma_pos_file in lemma_pos_files:
+            lang = lemma_pos_file.split(".")[1]
+            langs.add(lang)
+            if lang not in lemma_pos_lang:
+                lemma_pos_lang[lang] = set()
+
+            with open(os.path.join(dict_dir, lemma_pos_file), "rt", encoding="utf8") as f:
+                for line in f:
+                    line = line.strip().split(" ")
+                    lemmapos = line[0]
+                    lemma_pos_lang[lang].add(lemmapos)
+
+        # lemmapos2offsets dictionaries for each language
+        lemma_pos_offset_files = [filename for filename in os.listdir(dict_dir) if
+                                  os.path.isfile(os.path.join(dict_dir, filename)) and
+                                  filename.startswith("lemma_pos2offsets.")]
+        for lemma_pos_file in lemma_pos_offset_files:
+            lang = lemma_pos_file.split(".")[1]
+            langs.add(lang)
+            if lang not in lemma_pos2offsets_lang:
+                lemma_pos2offsets_lang[lang] = {}
+
+            with open(os.path.join(dict_dir, lemma_pos_file), "rt", encoding="utf8") as f:
+                for line in f:
+                    line = line.strip().split("\t")
+                    lemmapos = line[0]
+                    offsets = line[1:]
+                    if lemmapos in lemma_pos2offsets_lang[lang]:
+                        lemma_pos2offsets_lang[lang][lemmapos].update(offsets)
+                    else:
+                        lemma_pos2offsets_lang[lang][lemmapos] = set(offsets)
+
+    # Build dictionaries from datasets
     for dataset in datasets:
         print("Processing dataset {}".format(dataset.name))
         lang = dataset.lang
@@ -113,6 +158,7 @@ def set_dicts(datasets: List[ds.WSDData], built_ins=False):
                 else:
                     forms[form] = 1
 
+    paths = []
     for lang in langs:
         with open(os.path.join(DICT_PATH, "lemma_pos." + lang + ".txt"), "w", encoding="utf8") as f:
             paths.append(os.path.realpath(f.name))
@@ -196,6 +242,7 @@ def preproc(trainsets: List[ds.WSDData],
             evalsets: List[ds.WSDData],
             directory: str,
             data_for_dicts_only: List[ds.WSDData] = [],
+            dict_dir: str = None,
             max_length=100,
             on_error="skip",
             quiet=False):
@@ -207,7 +254,7 @@ def preproc(trainsets: List[ds.WSDData],
         print("Could not create data directories")
 
     # Make dictionaries
-    created_dicts = set_dicts(trainsets + evalsets + data_for_dicts_only)
+    created_dicts = set_dicts(trainsets + evalsets + data_for_dicts_only, dict_dir=dict_dir)
     # Copy form dictionary that we need for preprocessing and training
     # Copy other dictionaries as well for backup
     for dictpath in created_dicts:

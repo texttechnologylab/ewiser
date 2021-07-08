@@ -39,9 +39,9 @@ def add_bias_if_missing(checkpoint, path=''):
 
 
 def predict(checkpoint_paths: List[str],
-            xmls: str,
+            xmls: List[str],
             device: str = "cuda",
-            dict_path: str = DEFAULT_DICTIONARY,
+            dict_path: str = DEFAULT_DICTIONARY,  # dict_path is specifically the form dictionary
             lang: str = "en",
             max_length: int = 100,
             quiet: bool = False,
