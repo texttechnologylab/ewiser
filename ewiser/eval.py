@@ -9,6 +9,7 @@ from dataset import WSDData
 from typing import List
 
 
+# TODO: Test
 def eval_ewiser(checkpoint_path: str,
                 output_dir: str,
                 lang: str = None,

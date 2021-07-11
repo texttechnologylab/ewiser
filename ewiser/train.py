@@ -91,7 +91,6 @@ def train(out_dir: str, modelname: str, **params):
 # CLI will take datasets as files, tmpdir, modeldir and any params, then load datasets and call train
 # Datasets can be either as param "datasets", which will be train/eval split according to ratios,
 # or else as train/eval sets
-# TODO: cli should have option for not doing preproc but directly training with a prepared dir
 # TODO: Ewiser params somehow
 def cli():
     parser = argparse.ArgumentParser(description="Training script for ewiser")
@@ -124,7 +123,11 @@ def cli():
 
     # Directory in the training directory for models
     parser.add_argument("--model-dir", required=True, type=str, help=
-                        "Directory ")
+                        "Subdirectory in the training directory where checkpoints will be saved")
+
+    # If we should include the wordnet glosses and examples in the training data
+    parser.add_argument("--include-wn", required=False, action="store_true", help=
+                        "Wordnet glosses and examples are included in training data if set.")
 
     # Path to dictionaries for already created xml format files
     parser.add_argument("--dict-dir", required=False, type=str, help=
@@ -171,7 +174,12 @@ def cli():
 
     print("Preprocessing...")
     # Do preprocessing
-    preprocess.preproc(trainsets, evalsets, args.train_dir, data_for_dicts_only=testsets, dict_dir=args.dict_dir)
+    preprocess.preproc(trainsets,
+                       evalsets,
+                       args.train_dir,
+                       data_for_dicts_only=testsets,
+                       dict_dir=args.dict_dir,
+                       include_wn=args.include_wn)
 
     # Write out testsets as raganato for convenience
     if testsets:
