@@ -75,7 +75,7 @@ def train(out_dir: str, modelname: str, **params):
                 # Setup stage 2
                 "mkdir -p $SAVEDIR/stage2",
                 "cp $SAVEDIR/checkpoint_best.pt $SAVEDIR/stage2/init.pt",
-                "args3=(--restore-file $SAVEDIR/stage2/init.pt --decoder-structured-logits-trainable"
+                "args3=( --restore-file $SAVEDIR/stage2/init.pt --decoder-structured-logits-trainable"
                 " --only-load-weights --reset-optimizer --reset-dataloader --reset-meters)\n",
                 # Stage 2 training
                 "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\""
@@ -92,6 +92,8 @@ def train(out_dir: str, modelname: str, **params):
 # Datasets can be either as param "datasets", which will be train/eval split according to ratios,
 # or else as train/eval sets
 # TODO: Ewiser params somehow
+# TODO: Warning that setting --include-wn to true will produce some Warnings about missing entries in lemma pos \
+#  dictionary
 def cli():
     parser = argparse.ArgumentParser(description="Training script for ewiser")
 
@@ -173,6 +175,9 @@ def cli():
                 testsets.append(dataset)
 
     print("Preprocessing...")
+    if args.include_wn:
+        print("Including wordnet glosses and examples will produce warnings about missing lemma pos entries, these are "
+              "expected, but for the wordnet data only. ")
     # Do preprocessing
     preprocess.preproc(trainsets,
                        evalsets,
