@@ -79,7 +79,7 @@ def train(out_dir: str, modelname: str, **params):
                 " --only-load-weights --reset-optimizer --reset-dataloader --reset-meters)\n",
                 # Stage 2 training
                 "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\""
-                "\"${args3[@]}\" --lr 1e-5 --save-dir $SAVEDIR/stage2 --max-epoch $EPOCHS_2"]
+                " \"${args3[@]}\" --lr 1e-5 --save-dir $SAVEDIR/stage2 --max-epoch $EPOCHS_2"]
 
     with open("train_bash.sh", "w", encoding="utf8") as f:
         for line in outlines:
@@ -94,6 +94,8 @@ def train(out_dir: str, modelname: str, **params):
 # TODO: Ewiser params somehow
 # TODO: Warning that setting --include-wn to true will produce some Warnings about missing entries in lemma pos \
 #  dictionary
+# TODO: Option to directly train with already created training directories. Should ask the user if we want to train \
+#  with directory if it already exists
 def cli():
     parser = argparse.ArgumentParser(description="Training script for ewiser")
 
@@ -176,8 +178,8 @@ def cli():
 
     print("Preprocessing...")
     if args.include_wn:
-        print("Including wordnet glosses and examples will produce warnings about missing lemma pos entries, these are "
-              "expected, but for the wordnet data only. ")
+        print("INFO: Including wordnet glosses and examples will produce warnings about missing lemma pos entries, these are "
+              "expected for the wordnet data only. ")
     # Do preprocessing
     preprocess.preproc(trainsets,
                        evalsets,
