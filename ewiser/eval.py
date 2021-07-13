@@ -3,9 +3,9 @@ import argparse
 import shutil
 
 from bin.eval_wsd import predict
-from eval import compute_scores, pretty_print_results
+from wsdUtils.eval import compute_scores, pretty_print_results
 from preprocess import make_raganato, set_dicts
-from dataset import WSDData
+from wsdUtils.dataset import WSDData
 from typing import List
 
 

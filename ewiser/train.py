@@ -3,7 +3,7 @@ import subprocess
 import argparse
 
 from ewiser import preprocess
-from dataset import WSDData, train_test_split
+from wsdUtils.dataset import WSDData, train_test_split
 
 
 # Takes a dir with preprocessed corpora and relevant dictionaries, a model output dir, and a bunch of ewiser params
@@ -178,8 +178,8 @@ def cli():
 
     print("Preprocessing...")
     if args.include_wn:
-        print("INFO: Including wordnet glosses and examples will produce warnings about missing lemma pos entries, these are "
-              "expected for the wordnet data only. ")
+        print("\nINFO: Including wordnet glosses and examples will produce warnings about missing lemma pos entries, "
+              "these are expected for the wordnet data only.\n")
     # Do preprocessing
     preprocess.preproc(trainsets,
                        evalsets,

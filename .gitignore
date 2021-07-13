@@ -12,4 +12,6 @@ __pycache__/
 *egg-info/
 *.swp
 *.pt
+build/
+dist/
 

@@ -5,7 +5,7 @@ from typing import List
 
 from fairseq.data import Dictionary
 
-import dataset as ds
+from wsdUtils.dataset import WSDData
 
 from ewiser.fairseq_ext.data.wsd_dataset import WSDDatasetBuilder
 
@@ -44,7 +44,7 @@ def load_lemma_pos(lp_set, dict_path):
             lp_set.add(lemmapos)
 
 
-def set_dicts(datasets: List[ds.WSDData], dict_dir: str = None, include_wn: bool = False):
+def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = False):
     # dict_dir can be used to load dictionaries that were created previously and add them
     # Write out the dictionaries
     # Note: This might not work properly for english corpora?
@@ -202,7 +202,7 @@ def set_dicts(datasets: List[ds.WSDData], dict_dir: str = None, include_wn: bool
     return paths
 
 
-def make_raganato(dataset: ds.WSDData, directory):
+def make_raganato(dataset: WSDData, directory):
     # Writes out the dataset in the raganto xml format. This is used by EWISER for eval and its own preprocessing
     # XML filename is be dataset.name + ".data.xml"
     root = et.Element("corpus")
@@ -258,7 +258,7 @@ def make_raganato(dataset: ds.WSDData, directory):
     return outpath
 
 
-def _preproc_dataset(dataset: ds.WSDData,
+def _preproc_dataset(dataset: WSDData,
                      directory: str,
                      dictionary,
                      subdir_name: str,
@@ -312,10 +312,10 @@ def _raganato_preproc(input_dir: str,
     output.finalize()
 
 
-def preproc(trainsets: List[ds.WSDData],
-            evalsets: List[ds.WSDData],
+def preproc(trainsets: List[WSDData],
+            evalsets: List[WSDData],
             directory: str,
-            data_for_dicts_only: List[ds.WSDData] = [],
+            data_for_dicts_only: List[WSDData] = [],
             dict_dir: str = None,
             max_length=100,
             on_error="skip",
