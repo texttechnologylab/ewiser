@@ -91,10 +91,9 @@ def train(out_dir: str, modelname: str, **params):
 # CLI will take datasets as files, tmpdir, modeldir and any params, then load datasets and call train
 # Datasets can be either as param "datasets", which will be train/eval split according to ratios,
 # or else as train/eval sets
-# TODO: Ewiser params somehow
-# TODO: Warning that setting --include-wn to true will produce some Warnings about missing entries in lemma pos \
-#  dictionary
-# TODO: Option to directly train with already created training directories. Should ask the user if we want to train \
+# TODO: Ewiser params somehow, maybe as config file?
+# TODO: Ewiser instructions -> Train, Eval instructions, Dataset format, mapping instructions
+# TODO: Option to directly train with already created training directories: Should ask the user if we want to train
 #  with directory if it already exists
 def cli():
     parser = argparse.ArgumentParser(description="Training script for ewiser")

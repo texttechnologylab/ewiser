@@ -25,7 +25,7 @@ def eval_ewiser(checkpoint_path: str,
 
     # Turn xml paths into abspaths for the sake of it
     test_paths = [os.path.abspath(test_xml) for test_xml in test_xmls]
-    # Run tests on already raganatod corpora
+    # Run tests on already raganatoed corpora
     ewiser_results = predict([checkpoint_path],
                              test_paths,
                              device="cuda",
@@ -64,7 +64,7 @@ def eval_ewiser(checkpoint_path: str,
                 else:
                     print("No valid gold labels for key {} in {}, skipping".format(key, test_path))
             else:
-                print("Mismatch between gold and data keys, missing key {} in {}}, skipping".format(key, test_path))
+                print("Mismatch between test and train keys, missing key {} in {}}, skipping".format(key, test_path))
         scores[test_path] = compute_scores(golds, preds)
     return scores
 
@@ -74,25 +74,25 @@ def cli():
     pass
     parser = argparse.ArgumentParser(description="Training script for ewiser")
 
-    parser.add_argument("--checkpoint", required=True, type=str, help=
-                        "Ewiser checkpoint")
+    parser.add_argument("--checkpoint", required=True, type=str,
+                        help="Ewiser checkpoint")
 
-    parser.add_argument("--output", required=True, type=str, help=
-                        "Directory for temporary data storage and file outputs")
+    parser.add_argument("--output", required=True, type=str,
+                        help="Directory for temporary data storage and file outputs")
 
-    parser.add_argument("--jsons", required=False, type=str, help=
-                        "Json datasets to be used for testing")
+    parser.add_argument("--jsons", required=False, type=str,
+                        help="Json datasets to be used for testing")
 
-    parser.add_argument("--xmls", required=False, type=str, help=
-                        "Raganato XML style datasets to be used for testing")
+    parser.add_argument("--xmls", required=False, type=str,
+                        help="Raganato XML style datasets to be used for testing")
 
-    parser.add_argument("--lang", required=True, type=str, help=
-                        "Language of the xml corpora. Must be identical for all, undefined behaviour otherwise")
+    parser.add_argument("--lang", required=True, type=str,
+                        help="Language of the xml corpora. Must be identical for all, undefined behaviour otherwise")
 
-    parser.add_argument("--dicts", required=False, type=str, help=
-                        "Dictionary entries will be set using the json datasets. This argument can be specified to add"
-                        " additional dictionary entries. This is necessary if you have xml datasets whose keys are not"
-                        " included in the json datasets")
+    parser.add_argument("--dicts", required=False, type=str,
+                        help="Dictionary entries will be set using the json datasets. This argument can be specified "
+                             "to add additional dictionary entries. This is necessary if you have xml datasets whose "
+                             "keys are not included in the json datasets")
 
     args = parser.parse_args()
 
