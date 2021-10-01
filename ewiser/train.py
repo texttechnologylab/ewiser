@@ -1,13 +1,18 @@
 import os
 import subprocess
 import argparse
+import time
+import platform
 
-from ewiser import preprocess
+from ewiser import preprocess, eval
 from wsdUtils.dataset import WSDData, train_test_split
 
 
 # Takes a dir with preprocessed corpora and relevant dictionaries, a model output dir, and a bunch of ewiser params
+# TODO: Figure out ewiser model names and automatically test after training
 def train(out_dir: str, modelname: str, **params):
+
+    out_dir = os.path.abspath(out_dir)
 
     # Epochs and learning rates have to be handled separately
     shell_params = {"epochs1": 50,
@@ -47,45 +52,91 @@ def train(out_dir: str, modelname: str, **params):
     # Process parameters
     arg_list = []
     for key, value in params.items():
-        if not type(value) == bool:
-            arg_list.append("--{} {}".format(key, value))
-        else:
+        if type(value) == bool:
             if value:
                 arg_list.append("--{}".format(key))
+        else:
+            arg_list.append("--{} {}".format(key, value))
 
-    # Build shell file
-    outlines = ["#!/bin/bash",
-                "MODEL='{}'".format(modelname),
-                "CORPUS_DIR='{}'".format(out_dir),
-                "EMBEDDINGS='{}'".format(
-                    os.path.join(preprocess.EMB_PATH, 'sensembert+lmms.svd512.synset-centroid.vec')),
-                "EDGES='{}'".format(preprocess.EDGE_PATH),
-                "EPOCHS_1={}".format(shell_params["epochs1"]),
-                "EPOCHS_2={}\n".format(shell_params["epochs2"]),
-                # Savedir
-                "SAVEDIR='{}'".format(os.path.join(out_dir, modelname)),
-                "mkdir -p ${SAVEDIR}\n",
-                "args1=(\\\n{}\n)\n".format(" \\\n".join(arg_list)),
-                "args2=( --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits"
-                " --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv )\n",
-                # Stage 1 training
-                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\" --lr 1e-4"
-                " --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed"
-                " --decoder-structured-logits-trainable\n",
-                # Setup stage 2
-                "mkdir -p $SAVEDIR/stage2",
-                "cp $SAVEDIR/checkpoint_best.pt $SAVEDIR/stage2/init.pt",
-                "args3=( --restore-file $SAVEDIR/stage2/init.pt --decoder-structured-logits-trainable"
-                " --only-load-weights --reset-optimizer --reset-dataloader --reset-meters)\n",
-                # Stage 2 training
-                "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\""
-                " \"${args3[@]}\" --lr 1e-5 --save-dir $SAVEDIR/stage2 --max-epoch $EPOCHS_2"]
+    ewiser_working_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-    with open("train_bash.sh", "w", encoding="utf8") as f:
-        for line in outlines:
-            f.write(line + "\n")
+    if platform.system() == "Windows":
+        # Do the windows thing
+        print("Building batch file")
+        outlines = ["@echo off",
+                    "set MODEL={}".format(modelname),
+                    "set CORPUS_DIR={}".format(out_dir),
+                    "set EMBEDDINGS={}".format(
+                        os.path.join(preprocess.EMB_PATH, 'sensembert+lmms.svd512.synset-centroid.vec')),
+                    "set EDGES={}".format(preprocess.EDGE_PATH),
+                    "set EPOCHS_1={}".format(shell_params["epochs1"]),
+                    "set EPOCHS_2={}".format(shell_params["epochs2"]),
+                    "set CUDA_VISIBLE_DEVICES=0\n",
+                    "set SAVEDIR={}".format(os.path.join(out_dir, modelname)),
+                    "mkdir %SAVEDIR%",
+                    "echo %SAVEDIR%\n",
+                    "set args1={}".format(" ".join(arg_list)),
+                    "set args2=--decoder-output-pretrained %EMBEDDINGS% "
+                        "--decoder-use-structured-logits "
+                        "--decoder-structured-logits-edgelists %EDGES%\\hypernyms.tsv \n",
+                    # Stage 1 Traininig
+                    "cmd /c python bin\\train.py %CORPUS_DIR% %args1% %args2% --lr 1e-4 --save-dir %SAVEDIR% "
+                        "--max-epoch %EPOCHS_1% --decoder-output-fixed --decoder-structured-logits-trainable\n",
+                    "mkdir %SAVEDIR%\\stage2",
+                    "copy /y '%SAVEDIR%\\checkpoint_best.pt' '%SAVEDIR%\\stage2\\init.pt'",
+                    "set args3=--restore-file %SAVEDIR%\\stage2\\init.pt --decoder-structured-logits-trainable "
+                        "--only-load-weights --reset-optimizer --reset-dataloader --reset-meters\n",
+                    # Stage 2 training
+                    "cmd /c python bin\\train.py %CORPUS_DIR% %args1% %args2% %args3% --lr 1e-5 "
+                    "   --save-dir %SAVEDIR%\\stage2 --max-epoch %EPOCHS_2%"
+                    ]
 
-    subprocess.call(["bash", "train_bash.sh"])
+        with open(os.path.join(ewiser_working_dir, "train_batch.bat"), "w", encoding="utf8") as f:
+            for line in outlines:
+                f.write(line + "\n")
+
+        start = time.time()
+        subprocess.call([os.path.join(ewiser_working_dir, "train_batch.bat")], cwd=ewiser_working_dir)
+        print("Elapsed time to train: {}".format(time.time() - start))
+
+    else:  # Assume linux
+        # Build shell file
+        print("Building shell file")
+        outlines = ["#!/bin/bash",
+                    "MODEL='{}'".format(modelname),
+                    "CORPUS_DIR='{}'".format(out_dir),
+                    "EMBEDDINGS='{}'".format(
+                        os.path.join(preprocess.EMB_PATH, 'sensembert+lmms.svd512.synset-centroid.vec')),
+                    "EDGES='{}'".format(preprocess.EDGE_PATH),
+                    "EPOCHS_1={}".format(shell_params["epochs1"]),
+                    "EPOCHS_2={}\n".format(shell_params["epochs2"]),
+                    # Savedir
+                    "SAVEDIR='{}'".format(os.path.join(out_dir, modelname)),
+                    "mkdir -p ${SAVEDIR}\n",
+                    "args1=(\\\n{}\n)\n".format(" \\\n".join(arg_list)),
+                    "args2=( --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits"
+                    " --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv )\n",
+                    # Stage 1 training
+                    "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\" --lr 1e-4"
+                    " --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed"
+                    " --decoder-structured-logits-trainable\n",
+                    # Setup stage 2
+                    "mkdir -p $SAVEDIR/stage2",
+                    "cp $SAVEDIR/checkpoint_best.pt $SAVEDIR/stage2/init.pt",
+                    "args3=( --restore-file $SAVEDIR/stage2/init.pt --decoder-structured-logits-trainable"
+                    " --only-load-weights --reset-optimizer --reset-dataloader --reset-meters)\n",
+                    # Stage 2 training
+                    "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\""
+                    " \"${args3[@]}\" --lr 1e-5 --save-dir $SAVEDIR/stage2 --max-epoch $EPOCHS_2"
+                    ]
+
+        with open(os.path.join(ewiser_working_dir, "train_bash.sh"), "w", encoding="utf8") as f:
+            for line in outlines:
+                f.write(line + "\n")
+
+        start = time.time()
+        subprocess.call(["bash", "train_bash.sh"], cwd=ewiser_working_dir)
+        print("Elapsed time to train: {}".format(time.time() - start))
 
 
 # CLI will take datasets as files, tmpdir, modeldir and any params, then load datasets and call train
@@ -99,43 +150,43 @@ def cli():
     parser = argparse.ArgumentParser(description="Training script for ewiser")
 
     # Training sets
-    parser.add_argument("--train", required=False, type=str, nargs='*', help=
-                        "JSON Datafiles that should be used for training")
+    parser.add_argument("--train", required=False, type=str, nargs='*',
+                        help="JSON Datafiles that should be used for training")
 
     # Evaluation sets
-    parser.add_argument("--eval", required=False, type=str, nargs='*', help=
-                        "JSON Datafiles that will be used for validation during training")
+    parser.add_argument("--eval", required=False, type=str, nargs='*',
+                        help="JSON Datafiles that will be used for validation during training")
 
-    parser.add_argument("--test", required=False, type=str, nargs='*', help=
-                        "JSON Datafiles that you intend to use for testing. No actual testing is done, but "
+    parser.add_argument("--test", required=False, type=str, nargs='*',
+                        help="JSON Datafiles that you intend to use for testing. No actual testing is done, but "
                         "dictionary entries are updated")
 
     # Plain datasets, that we will split ourselves
-    parser.add_argument("--data", required=False, type=str, nargs='*', help=
-                        "JSON Datafiles that will be split into train/eval/test. Note that the test set will not be "
-                        "used during training. This argument and train/eval are mutually exclusive!")
+    parser.add_argument("--data", required=False, type=str, nargs='*',
+                        help="JSON Datafiles that will be split into train/eval/test. Note that the test set will not "
+                             "be used during training. This argument and train/eval are mutually exclusive!")
     # If we split we have to know ratios
-    parser.add_argument("--ratio-eval", required=False, type=float, help=
-                        "ratio of the datasets that will be used as evaluation data")
-    parser.add_argument("--ratio-test", required=False, type=float, help=
-                        "ratio of the datasets that will be used as test data")
+    parser.add_argument("--ratio-eval", required=False, type=float,
+                        help="ratio of the datasets that will be used as evaluation data")
+    parser.add_argument("--ratio-test", required=False, type=float,
+                        help="ratio of the datasets that will be used as test data")
 
     # Training directory (will be created if not exists)
-    parser.add_argument("--train-dir", required=True, type=str, help=
-                        "Directory where relevant data and preprocessed corpora will be stored")
+    parser.add_argument("--train-dir", required=True, type=str,
+                        help="Directory where relevant data and preprocessed corpora will be stored")
 
     # Directory in the training directory for models
-    parser.add_argument("--model-dir", required=True, type=str, help=
-                        "Subdirectory in the training directory where checkpoints will be saved")
+    parser.add_argument("--model-dir", required=True, type=str,
+                        help="Subdirectory in the training directory where checkpoints will be saved")
 
     # If we should include the wordnet glosses and examples in the training data
-    parser.add_argument("--include-wn", required=False, action="store_true", help=
-                        "Wordnet glosses and examples are included in training data if set.")
+    parser.add_argument("--include-wn", required=False, action="store_true",
+                        help="Wordnet glosses and examples are included in training data if set.")
 
     # Path to dictionaries for already created xml format files
-    parser.add_argument("--dict-dir", required=False, type=str, help=
-                        "Directory containing additional dictionary files.\n"
-                        "Dictionaries are normally built, saved and set during preprocessing."
+    parser.add_argument("--dict-dir", required=False, type=str,
+                        help="Directory containing additional dictionary files.\n"
+                        "Dictionaries are normally built, saved and set automatically during preprocessing."
                         " If you setup two training runs, the set dictionaries will match the last run, not the first."
                         " It is important that the dictionaries used during training match those used during "
                         "preprocessing to avoid errors. This parameter can be used to point to the directory where the "
@@ -194,6 +245,8 @@ def cli():
     print("Training...")
     # Train model
     train(args.train_dir, args.model_dir)
+    #if testsets:
+        #eval.eval_ewiser(os.path.join(args.train_dir, args.model_dir, MODELNAMES), args.train_dir, test_datasets=testsets)
 
 
 if __name__ == "__main__":
