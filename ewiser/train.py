@@ -6,6 +6,7 @@ import platform
 
 from ewiser import preprocess, eval
 from wsdUtils.dataset import WSDData, train_test_split
+from wsdUtils.eval import compute_scores, pretty_print_results
 
 
 # Takes a dir with preprocessed corpora and relevant dictionaries, a model output dir, and a bunch of ewiser params
@@ -42,7 +43,8 @@ def train(out_dir: str, modelname: str, **params):
         "decoder-norm": True,
         "decoder-last-activation": True,
         "decoder-activation": "swish",
-        "no-epoch-checkpoints": True
+        "no-epoch-checkpoints": True,
+        "num-workers": 0  # Very important, prevents h5py objects cannot be pickled errors.
     }
 
     for key, value in DEFAULT_PARAMS.items():
@@ -245,8 +247,18 @@ def cli():
     print("Training...")
     # Train model
     train(args.train_dir, args.model_dir)
-    #if testsets:
-        #eval.eval_ewiser(os.path.join(args.train_dir, args.model_dir, MODELNAMES), args.train_dir, test_datasets=testsets)
+    if testsets:
+        print("Testing...")
+        for testset in testsets:
+            start_test = time.time()
+            lang = testset.lang
+            name = testset.name + ".data.xml"
+            scores = eval.eval_ewiser(os.path.join(args.train_dir, args.model_dir, "stage2", "checkpoint_best.pt"),
+                                        args.train_dir, lang=lang, test_xmls=[os.path.join(args.train_dir, name)])
+            print("Elapsed test time: {}".format(time.time() - start_test))
+            for testpath in scores:
+                "Scores for {}".format(testpath)
+                pretty_print_results(scores[testpath])
 
 
 if __name__ == "__main__":

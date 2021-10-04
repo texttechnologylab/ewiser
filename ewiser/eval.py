@@ -4,7 +4,7 @@ import shutil
 
 from bin.eval_wsd import predict
 from wsdUtils.eval import compute_scores, pretty_print_results
-from preprocess import make_raganato, set_dicts
+from ewiser.preprocess import make_raganato, set_dicts
 from wsdUtils.dataset import WSDData
 from typing import List
 
@@ -21,7 +21,8 @@ def eval_ewiser(checkpoint_path: str,
     """
     assert len(test_datasets) > 0 or len(test_xmls) > 0
     if len(test_xmls) > 0:
-        assert lang is not None, "Language has to specified manually for xml corpora"
+        assert lang is not None, "Language has to specified manually for xml corpora. " \
+                                 "All xml corpora must have the same language"
 
     # Turn xml paths into abspaths for the sake of it
     test_paths = [os.path.abspath(test_xml) for test_xml in test_xmls]
@@ -52,15 +53,11 @@ def eval_ewiser(checkpoint_path: str,
         preds = []
         for key, value in pred_dict.items():
             if key in gold_dict:
+                print(gold_dict[key])
                 if gold_dict[key]:
                     preds.append(value)
-                    if len(gold_dict[key]) == 1:
-                        golds.append(gold_dict[key][0])
-                    else:
-                        for gold in gold_dict[key]:
-                            if gold == value:
-                                golds.append(gold)
-                                break
+                    for gold in gold_dict[key]:
+                        golds.append(gold)  # Currently only support single label per instance
                 else:
                     print("No valid gold labels for key {} in {}, skipping".format(key, test_path))
             else:
