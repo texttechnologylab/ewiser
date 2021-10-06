@@ -1,4 +1,5 @@
 import os
+import time
 import pickle
 from collections import defaultdict
 from pathlib import Path
@@ -103,6 +104,7 @@ def predict(checkpoint_paths: List[str],
 
         hit, tot = 0, 0
         all_answers = {}
+        start_test = time.time()
         for sample_original in DataLoader(dataset, collate_fn=dataset.collater, batch_size=batch_size):
             with torch.no_grad():
                 net_output = model(**{k: v.to(device) if isinstance(v, torch.Tensor) else v
@@ -113,7 +115,7 @@ def predict(checkpoint_paths: List[str],
             all_answers.update(answers)
             hit += results['hit']
             tot += results['tot']
-
+        print("Elapsed test time: {} for {}".format(time.time() - start_test, corpus))
         T = 0
         gold_answers = defaultdict(set)
         gold_path = Path(corpus.replace('data.xml', 'gold.key.txt'))
@@ -211,6 +213,7 @@ def predict(checkpoint_paths: List[str],
                     results_file.write(k + ' ' + v + '\n')
         # return gold and best_pred dictionaries
         per_corp_results[corpus] = (gold_answers, all_answers)
+
     return per_corp_results
 
 

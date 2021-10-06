@@ -53,7 +53,6 @@ def eval_ewiser(checkpoint_path: str,
         preds = []
         for key, value in pred_dict.items():
             if key in gold_dict:
-                print(gold_dict[key])
                 if gold_dict[key]:
                     preds.append(value)
                     for gold in gold_dict[key]:

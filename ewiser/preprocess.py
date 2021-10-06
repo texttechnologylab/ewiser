@@ -17,6 +17,7 @@ DICT_PATH = os.path.abspath(os.path.join(dir_path, "../res/dictionaries"))
 EMB_PATH = os.path.abspath(os.path.join(dir_path, "../res/embeddings"))
 EDGE_PATH = os.path.abspath(os.path.join(dir_path, "../res/edges"))
 CORPORA_PATH = os.path.abspath(os.path.join(dir_path, "../res/corpora"))
+LANGS = ["en", "de", "es", "fr", "it"]
 
 """
 Functions for preprocessing corpora into EWISER-appropriate formats and creating relevant data files.
@@ -25,15 +26,15 @@ dictionaries may not be consistent otherwise
 """
 
 
-def load_form_dict(forms, dict_path):
+def load_label_freq_dict(l_dict, dict_path):
     with open(dict_path, "rt", encoding="utf8") as f:
         for line in f:
             line = line.strip().split(" ")
             form, freq = line
-            if form in forms:
-                forms[form] = forms[form] + int(freq)
+            if form in l_dict:
+                l_dict[form] = l_dict[form] + int(freq)
             else:
-                forms[form] = int(freq)
+                l_dict[form] = int(freq)
 
 
 def load_lemma_pos(lp_set, dict_path):
@@ -44,29 +45,19 @@ def load_lemma_pos(lp_set, dict_path):
             lp_set.add(lemmapos)
 
 
-def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = False):
-    # dict_dir can be used to load dictionaries that were created previously and add them
-    # Write out the dictionaries
-    # Note: This might not work properly for english corpora?
-    print("Creating dictionary entries...")
-    # Relevant languages:
-    langs = set()
-    # Remove current dictionaries
-    for dataset in datasets:
-        langs.add(dataset.lang)
-    main_dict_path = os.path.join(DICT_PATH, "dict.txt")
-    if os.path.exists(main_dict_path):
-        os.remove(os.path.join(DICT_PATH, "dict.txt"))
-    for lang in langs:
-        pos_path = os.path.join(DICT_PATH, "lemma_pos." + lang + ".txt")
-        if os.path.exists(pos_path):
-            os.remove(pos_path)
-        offsets_path = os.path.join(DICT_PATH, "lemma_pos2offsets." + lang + ".txt")
-        if os.path.exists(offsets_path):
-            os.remove(offsets_path)
+def load_lemma2offsets(lemma2offset_dict, dict_path):
+    with open(dict_path, "rt", encoding="utf8") as f:
+        for line in f:
+            line = line.strip().split("\t")
+            lemmapos = line[0]
+            offsets = line[1:]
+            if lemmapos in lemma2offset_dict:
+                lemma2offset_dict[lemmapos].update(offsets)
+            else:
+                lemma2offset_dict[lemmapos] = set(offsets)
 
-    # Load wordnet to babelnet mapping
-    print("Loading babelnet mapping")
+
+def load_bnidmap():
     wn2bn = {}
     with open(os.path.join(DICT_PATH, "bnids_map.txt"), "r", encoding="utf8") as f:
         for line in f:
@@ -74,26 +65,68 @@ def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = 
             bn = line[0]
             wn = line[2]
             wn2bn[wn] = bn
+    return wn2bn
+
+
+def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = False):
+    # dict_dir can be used to load dictionaries that were created previously and add them
+    # Write out the dictionaries
+    # Note: This might not work properly for english corpora?
+    print("Creating dictionary entries...")
+
+    do_offsets = False  # Updating offsets.txt causes issues with the adjacency list, seems to be a bigger rework
+
+    # Remove current dictionaries
+    paths_to_remove = []
+    paths_to_remove.append("dict.txt")  # form dict
+    if do_offsets:
+        paths_to_remove.append("offsets.txt")  # offsets
+    for lang in LANGS:
+        paths_to_remove.append("lemma_pos." + lang + ".txt")
+        paths_to_remove.append("lemma_pos2offsets." + lang + ".txt")
+
+    for path in paths_to_remove:
+        full_path = os.path.join(DICT_PATH, path)
+        if os.path.exists(full_path):
+            os.remove(full_path)
+
+    # The following dictionary files are only used in certain circumstances that we do not care about
+    # "mfs.txt" - no idea when this is relevant
+    # "sensekeys.txt" - same as offsets.txt but with sensekeys, only relevant sensekey labels, which we do not allow
+
+    # Load wordnet to babelnet mapping
+    print("Loading babelnet mapping")
+    wn2bn = load_bnidmap()
+
+    # Relevant languages:
+    langs = set()
+    for dataset in datasets:
+        langs.add(dataset.lang)
+    if include_wn:
+        langs.add("en")
 
     # Create new dictionaries ones using datasets, directory and optionally the wordnet ones
     # Setup dictionaries
     forms = {}
     lemma_pos_lang = {}
     lemma_pos2offsets_lang = {}
+    offsets = {}
     for lang in langs:
         lemma_pos_lang[lang] = set()
         lemma_pos2offsets_lang[lang] = {}
 
     if include_wn:
-        langs.add("en")
-        load_form_dict(forms, os.path.join(DICT_PATH, "builtin_dict.txt"))
+        load_label_freq_dict(forms, os.path.join(DICT_PATH, "builtin_dict.txt"))  # Load dict
+        load_label_freq_dict(offsets, os.path.join(DICT_PATH, "builtin_offsets.txt"))
         if "en" not in lemma_pos_lang:
             lemma_pos_lang["en"] = set()
         load_lemma_pos(lemma_pos_lang["en"], os.path.join(DICT_PATH, "builtin_lemma_pos.en.txt"))
+        # lemmapos2offsets does not exist for english, presumably built from bn?
 
     # Load dictionaries from directory
     if dict_dir:
-        load_form_dict(forms, os.path.join(dict_dir, "dict.txt"))
+        load_label_freq_dict(forms, os.path.join(dict_dir, "dict.txt"))
+        load_label_freq_dict(offsets, os.path.join(dict_dir, "offsets.txt"))
 
         # lemmapos dictionaries for each language
         lemma_pos_files = [filename for filename in os.listdir(dict_dir) if
@@ -117,15 +150,7 @@ def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = 
             if lang not in lemma_pos2offsets_lang:
                 lemma_pos2offsets_lang[lang] = {}
 
-            with open(os.path.join(dict_dir, lemma_pos_file), "rt", encoding="utf8") as f:
-                for line in f:
-                    line = line.strip().split("\t")
-                    lemmapos = line[0]
-                    offsets = line[1:]
-                    if lemmapos in lemma_pos2offsets_lang[lang]:
-                        lemma_pos2offsets_lang[lang][lemmapos].update(offsets)
-                    else:
-                        lemma_pos2offsets_lang[lang][lemmapos] = set(offsets)
+            load_lemma2offsets(lemma_pos2offsets_lang[lang], os.path.join(dict_dir, lemma_pos_file))
 
     # Build dictionaries from datasets
     for dataset in datasets:
@@ -178,25 +203,38 @@ def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = 
                 else:
                     forms[form] = 1
 
+            # offsets
+            assert label.startswith("wn:"), "Labels must be wordnet offsets in the format 'wn:<offset>'"
+            if label in offsets:
+                offsets[label] += 1
+            else:
+                offsets[label] = 1
+
     paths = []
     for lang in langs:
-        with open(os.path.join(DICT_PATH, "lemma_pos." + lang + ".txt"), "w", encoding="utf8") as f:
+        with open(os.path.join(DICT_PATH, "lemma_pos." + lang + ".txt"), "w", encoding="utf8", newline="") as f:
             paths.append(os.path.realpath(f.name))
             for lemma_pos in lemma_pos_lang[lang]:
                 f.write(lemma_pos + " 1\n")
 
-        if lang in lemma_pos2offsets_lang:
-            with open(os.path.join(DICT_PATH, "lemma_pos2offsets." + lang + ".txt"), "w", encoding="utf8") as f:
-                paths.append(os.path.realpath(f.name))
-                for lemma_pos in lemma_pos2offsets_lang[lang]:
-                    f.write(lemma_pos + "\t" + "\t".join(lemma_pos2offsets_lang[lang][lemma_pos]) + "\n")
+        with open(os.path.join(DICT_PATH, "lemma_pos2offsets." + lang + ".txt"), "w", encoding="utf8", newline="") as f:
+            paths.append(os.path.realpath(f.name))
+            for lemma_pos in lemma_pos2offsets_lang[lang]:
+                f.write(lemma_pos + "\t" + "\t".join(lemma_pos2offsets_lang[lang][lemma_pos]) + "\n")
 
     # Sort forms by frequency.
-    out = [item[0] + " " + str(item[1]) for item in sorted(forms.items(), key=lambda item: item[1], reverse=True)]
-    with open(os.path.join(DICT_PATH, "dict.txt"), "w", encoding="utf8") as f:
+    forms_out = [item[0] + " " + str(item[1]) for item in sorted(forms.items(), key=lambda item: item[1], reverse=True)]
+    with open(os.path.join(DICT_PATH, "dict.txt"), "w", encoding="utf8", newline="") as f:
         paths.append(os.path.realpath(f.name))
-        for line in out:
+        for line in forms_out:
             f.write(line + "\n")
+
+    if do_offsets:
+        offsets_out = [item[0] + " " + str(item[1]) for item in sorted(offsets.items(), key=lambda item: item[1], reverse=True)]
+        with open(os.path.join(DICT_PATH, "offsets.txt"), "w", encoding="utf8", newline="") as f:
+            paths.append(os.path.realpath(f.name))
+            for line in offsets_out:
+                f.write(line + "\n")
 
     # Return the paths to all dictionaries we created, so we can back them up
     return paths

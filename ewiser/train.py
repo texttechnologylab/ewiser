@@ -17,7 +17,7 @@ def train(out_dir: str, modelname: str, **params):
 
     # Epochs and learning rates have to be handled separately
     shell_params = {"epochs1": 50,
-                    "epochs2": 50}
+                    "epochs2": 20}
 
     # Setup params for training script
     DEFAULT_PARAMS = {
@@ -68,29 +68,34 @@ def train(out_dir: str, modelname: str, **params):
         outlines = ["@echo off",
                     "set MODEL={}".format(modelname),
                     "set CORPUS_DIR={}".format(out_dir),
-                    "set EMBEDDINGS={}".format(
-                        os.path.join(preprocess.EMB_PATH, 'sensembert+lmms.svd512.synset-centroid.vec')),
-                    "set EDGES={}".format(preprocess.EDGE_PATH),
+                    "set EMBEDDINGS={}".format(os.path.abspath(
+                        os.path.join(preprocess.EMB_PATH, 'sensembert+lmms.svd512.synset-centroid.vec'))),
+                    "set EDGES={}".format(os.path.abspath(preprocess.EDGE_PATH)),
                     "set EPOCHS_1={}".format(shell_params["epochs1"]),
                     "set EPOCHS_2={}".format(shell_params["epochs2"]),
                     "set CUDA_VISIBLE_DEVICES=0\n",
-                    "set SAVEDIR={}".format(os.path.join(out_dir, modelname)),
+                    "set SAVEDIR=\"%CORPUS_DIR%\\%MODEL%\"",
                     "mkdir %SAVEDIR%",
                     "echo %SAVEDIR%\n",
-                    "set args1={}".format(" ".join(arg_list)),
-                    "set args2=--decoder-output-pretrained %EMBEDDINGS% "
-                        "--decoder-use-structured-logits "
-                        "--decoder-structured-logits-edgelists %EDGES%\\hypernyms.tsv \n",
+                    "set args1={}\n".format(" ^\n ".join(arg_list)),
+                    "set args2=--decoder-output-pretrained %EMBEDDINGS% ^\n"
+                        " --decoder-use-structured-logits ^\n"
+                        " --decoder-structured-logits-edgelists ^\n"
+                        " %EDGES%\\hypernyms.tsv ^\n"
+                        " %EDGES%\\derivationally.sym.tsv ^\n"
+                        " %EDGES%\\similartos.sym.tsv ^\n"
+                        " %EDGES%\\verbgroups.sym.tsv \n",
                     # Stage 1 Traininig
-                    "cmd /c python bin\\train.py %CORPUS_DIR% %args1% %args2% --lr 1e-4 --save-dir %SAVEDIR% "
-                        "--max-epoch %EPOCHS_1% --decoder-output-fixed --decoder-structured-logits-trainable\n",
+                    "cmd /c python bin\\train.py %CORPUS_DIR% %args1% %args2% --lr 1e-4 --save-dir %SAVEDIR% ^\n"
+                        " --max-epoch %EPOCHS_1% --decoder-output-fixed --decoder-structured-logits-trainable ^\n"
+                        " || exit \\b %errorlevel%",
                     "mkdir %SAVEDIR%\\stage2",
-                    "copy /y '%SAVEDIR%\\checkpoint_best.pt' '%SAVEDIR%\\stage2\\init.pt'",
-                    "set args3=--restore-file %SAVEDIR%\\stage2\\init.pt --decoder-structured-logits-trainable "
-                        "--only-load-weights --reset-optimizer --reset-dataloader --reset-meters\n",
+                    "copy /y \"%SAVEDIR%\\checkpoint_best.pt\" \"%SAVEDIR%\\stage2\\init.pt\" || exit \\b %errorlevel%",
+                    "set args3=--restore-file %SAVEDIR%\\stage2\\init.pt --decoder-structured-logits-trainable ^\n"
+                        " --only-load-weights --reset-optimizer --reset-dataloader --reset-meters\n",
                     # Stage 2 training
-                    "cmd /c python bin\\train.py %CORPUS_DIR% %args1% %args2% %args3% --lr 1e-5 "
-                    "   --save-dir %SAVEDIR%\\stage2 --max-epoch %EPOCHS_2%"
+                    "cmd /c python bin\\train.py %CORPUS_DIR% %args1% %args2% %args3% --lr 1e-5 ^\n"
+                    " --save-dir %SAVEDIR%\\stage2 --max-epoch %EPOCHS_2% || exit \\b %errorlevel%"
                     ]
 
         with open(os.path.join(ewiser_working_dir, "train_batch.bat"), "w", encoding="utf8") as f:
@@ -217,16 +222,16 @@ def cli():
             testsets.append(testset)
 
     elif args.train is not None and args.eval is not None:
-        for datapath in args.train:
-            dataset = WSDData.load(datapath)
-            trainsets.append(dataset)
-        for datapath in args.eval:
-            dataset = WSDData.load(datapath)
-            evalsets.append(dataset)
+        for datapath1 in args.train:
+            dataset1 = WSDData.load(datapath1)
+            trainsets.append(dataset1)
+        for datapath2 in args.eval:
+            dataset2 = WSDData.load(datapath2)
+            evalsets.append(dataset2)
         if args.test is not None:
-            for datapath in args.test:
-                dataset = WSDData.load(datapath)
-                testsets.append(dataset)
+            for datapath3 in args.test:
+                dataset3 = WSDData.load(datapath3)
+                testsets.append(dataset3)
 
     print("Preprocessing...")
     if args.include_wn:
@@ -250,12 +255,12 @@ def cli():
     if testsets:
         print("Testing...")
         for testset in testsets:
-            start_test = time.time()
+
             lang = testset.lang
             name = testset.name + ".data.xml"
             scores = eval.eval_ewiser(os.path.join(args.train_dir, args.model_dir, "stage2", "checkpoint_best.pt"),
-                                        args.train_dir, lang=lang, test_xmls=[os.path.join(args.train_dir, name)])
-            print("Elapsed test time: {}".format(time.time() - start_test))
+                                      args.train_dir, lang=lang, test_xmls=[os.path.join(args.train_dir, name)])
+
             for testpath in scores:
                 "Scores for {}".format(testpath)
                 pretty_print_results(scores[testpath])

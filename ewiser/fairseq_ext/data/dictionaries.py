@@ -678,7 +678,7 @@ def fix_offset(offset):
     offsets = ResourceManager.get_offsets_dictionary()
     if offset.endswith('a'):
         try:
-            offsets.indices[offset]
+            offsets.indices[offset]  # Checks that adjacent synsets are in offset list
             return offset
         except KeyError as e:
             fixed_offset = offset[:-1] + 's'
