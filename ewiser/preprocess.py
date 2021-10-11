@@ -68,7 +68,8 @@ def load_bnidmap():
     return wn2bn
 
 
-def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = False):
+def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = False, on_error: str = "skip"):
+    """ skip excludes entries which dop not have corresponding babelnet entries"""
     # dict_dir can be used to load dictionaries that were created previously and add them
     # Write out the dictionaries
     # Note: This might not work properly for english corpora?
@@ -186,8 +187,13 @@ def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = 
                 # Translate from wordnet to bn using the provided mapping
                 try:
                     bnlabel = wn2bn[label]
-                except IndexError as e:
-                    raise IndexError("Couldn't find a babelnet id for wordnet label {}".format(label)) from e
+                except KeyError as e:
+                    if on_error == "raise":
+                        raise KeyError("Couldn't find a babelnet id for wordnet label {}".format(label)) from e
+                    elif on_error == "skip":
+                        continue
+                    else:
+                        raise NotImplementedError from e
             elif label.startswith("bn:"):
                 bnlabel = label
             if lemma_pos_key in lemma_pos2offsets_lang[lang]:
@@ -240,16 +246,24 @@ def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = 
     return paths
 
 
-def make_raganato(dataset: WSDData, directory):
+def make_raganato(dataset: WSDData, directory, on_error: str = "skip"):
     # Writes out the dataset in the raganto xml format. This is used by EWISER for eval and its own preprocessing
     # XML filename is be dataset.name + ".data.xml"
     root = et.Element("corpus")
 
+    valid_wnids = load_bnidmap()
     gold_keys = []
 
     doc_counter = 0
     for entry in dataset.entries:
         doc_counter += 1
+        # Filter out illegal wordnet labels
+        if not entry.label.startswith("bn") and entry.label not in valid_wnids:
+            if on_error == "skip":
+                print("Skipping entry with illegal label {}".format(entry.label))
+                continue
+            else:
+                raise KeyError("Invalid label!")
         doc_id = "d{:07d}".format(doc_counter)
         text = et.SubElement(root, "text")
         text.set("id", doc_id)
@@ -265,6 +279,7 @@ def make_raganato(dataset: WSDData, directory):
         for token in entry.tokens:
             instance_counter = 0
             if token.is_pivot:
+
                 instance_counter += 1
                 instance_id = "h{:03d}".format(instance_counter)
                 instance = et.SubElement(sentence, "instance")
@@ -276,7 +291,12 @@ def make_raganato(dataset: WSDData, directory):
             else:
                 word = et.SubElement(sentence, "wf")
                 word.set("lemma", token.lemma)
-                word.set("pos", token.upos)
+                try:
+                    word.set("pos", token.upos)
+                except TypeError as e:
+                    print(token)
+                    print(repr(token.pos), repr(token.upos))
+                    raise e
                 word.text = token.form
 
     # Write out files
@@ -300,11 +320,12 @@ def _preproc_dataset(dataset: WSDData,
                      directory: str,
                      dictionary,
                      subdir_name: str,
+                     on_error: str = "skip",
                      **kwargs):
 
     assert dataset.labeltype in VALID_LABELS, "Labels must be one of {}".format(VALID_LABELS)
     os.mkdir(os.path.join(directory, "data", subdir_name))
-    make_raganato(dataset, os.path.join(directory, "data", subdir_name))
+    make_raganato(dataset, os.path.join(directory, "data", subdir_name), on_error=on_error)
 
     # adjust keys:
     input_keys = None
@@ -367,7 +388,10 @@ def preproc(trainsets: List[WSDData],
         print("Could not create data directories")
 
     # Make dictionaries
-    created_dicts = set_dicts(trainsets + evalsets + data_for_dicts_only, dict_dir=dict_dir, include_wn=include_wn)
+    created_dicts = set_dicts(trainsets + evalsets + data_for_dicts_only,
+                              dict_dir=dict_dir,
+                              include_wn=include_wn,
+                              on_error=on_error)
     # Copy form dictionary that we need for preprocessing and training
     # Copy other dictionaries as well for backup
     for dictpath in created_dicts:
