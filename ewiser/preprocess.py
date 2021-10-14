@@ -267,26 +267,23 @@ def make_raganato(dataset: WSDData, directory, on_error: str = "skip"):
         else:
             sentence_entry_map[idx] = [entry]
 
-    doc_counter = 0
+    doc_counter = 1
+    doc_id = "d{:07d}".format(doc_counter)
+    text = et.SubElement(root, "text")
+    text.set("id", doc_id)
+    source_id = dataset.name
+    text.set("source", source_id)
+    sent_counter = 0
     for sentence_idx in sentence_entry_map:
-        doc_counter += 1
-        # Grab sentence/tokens from first entry in list, are identical for all
+        # Grab tokens and source from first entry in list, are identical for all
         tokens = sentence_entry_map[sentence_idx][0].tokens
 
-        doc_id = "d{:07d}".format(doc_counter)
-        text = et.SubElement(root, "text")
-        text.set("id", doc_id)
-        source_id = None
-        if source_id is None:
-            source_id = dataset.name + str(doc_counter)
-        text.set("source", source_id)
-
-        sent_id = "s001"
+        sent_id = "s{:03d}".format(sent_counter)
         sentence_element = et.SubElement(text, "sentence")
         sentence_element.set("id", doc_id + "." + sent_id)
 
+        instance_counter = 0
         for token in tokens:
-            instance_counter = 0
             # check if this token is a pivot in any of the entries for this sentence
             label = None
             for entry in sentence_entry_map[sentence_idx]:
@@ -318,6 +315,7 @@ def make_raganato(dataset: WSDData, directory, on_error: str = "skip"):
                     print(repr(token.pos), repr(token.upos))
                     raise e
                 word.text = token.form
+        sent_counter += 1
 
     # Write out files
     tree = et.ElementTree(root)
