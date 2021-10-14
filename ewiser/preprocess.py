@@ -9,7 +9,7 @@ from wsdUtils.dataset import WSDData
 
 from ewiser.fairseq_ext.data.wsd_dataset import WSDDatasetBuilder
 
-VALID_POS = ["NOUN", "VERB", "ADJ", "ADJ"]
+VALID_POS = ["NOUN", "VERB", "ADJ", "ADV"]
 VALID_LABELS = ["wnoffsets", "bnids"]
 # These are not freely adjustable as they are referenced in EWISER code itself
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -118,7 +118,8 @@ def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = 
 
     if include_wn:
         load_label_freq_dict(forms, os.path.join(DICT_PATH, "builtin_dict.txt"))  # Load dict
-        load_label_freq_dict(offsets, os.path.join(DICT_PATH, "builtin_offsets.txt"))
+        if do_offsets:
+            load_label_freq_dict(offsets, os.path.join(DICT_PATH, "builtin_offsets.txt"))
         if "en" not in lemma_pos_lang:
             lemma_pos_lang["en"] = set()
         load_lemma_pos(lemma_pos_lang["en"], os.path.join(DICT_PATH, "builtin_lemma_pos.en.txt"))
@@ -163,7 +164,8 @@ def set_dicts(datasets: List[WSDData], dict_dir: str = None, include_wn: bool = 
             lemma = entry.lemma
             upos = entry.upos
             assert len(entry.tokens) > 0, "Entries must have list of tokens"
-            assert upos in VALID_POS, "EWISER cannot process pos other than NOUN, VERB, ADJ or ADV"
+            assert upos in VALID_POS, "Invalid pos {}, EWISER cannot process pos other than " \
+                                      "NOUN, VERB, ADJ or ADV".format(upos)
             pos = None
             if upos == "NOUN":
                 pos = "n"
