@@ -258,42 +258,58 @@ def make_raganato(dataset: WSDData, directory, on_error: str = "skip"):
     valid_wnids = load_bnidmap()
     gold_keys = []
 
-    doc_counter = 0
+    # Map entries to sentences
+    sentence_entry_map = {}
     for entry in dataset.entries:
+        idx = entry.sentence_idx
+        if idx in sentence_entry_map:
+            sentence_entry_map[idx].append(entry)
+        else:
+            sentence_entry_map[idx] = [entry]
+
+    doc_counter = 0
+    for sentence_idx in sentence_entry_map:
         doc_counter += 1
-        # Filter out illegal wordnet labels
-        if not entry.label.startswith("bn") and entry.label not in valid_wnids:
-            if on_error == "skip":
-                print("Skipping entry with illegal label {}".format(entry.label))
-                continue
-            else:
-                raise KeyError("Invalid label!")
+        # Grab sentence/tokens from first entry in list, are identical for all
+        tokens = sentence_entry_map[sentence_idx][0].tokens
+
         doc_id = "d{:07d}".format(doc_counter)
         text = et.SubElement(root, "text")
         text.set("id", doc_id)
-        source_id = entry.source_id
+        source_id = None
         if source_id is None:
             source_id = dataset.name + str(doc_counter)
         text.set("source", source_id)
 
         sent_id = "s001"
-        sentence = et.SubElement(text, "sentence")
-        sentence.set("id", doc_id + "." + sent_id)
+        sentence_element = et.SubElement(text, "sentence")
+        sentence_element.set("id", doc_id + "." + sent_id)
 
-        for token in entry.tokens:
+        for token in tokens:
             instance_counter = 0
-            if token.begin == entry.pivot_start and token.end == entry.pivot_end:
-
+            # check if this token is a pivot in any of the entries for this sentence
+            label = None
+            for entry in sentence_entry_map[sentence_idx]:
+                # Filter out illegal wordnet labels
+                if not entry.label.startswith("bn") and entry.label not in valid_wnids:
+                    if on_error == "skip":
+                        print("Skipping entry with illegal label {}".format(entry.label))
+                        continue
+                    else:
+                        raise KeyError("Invalid label!")
+                if token.begin == entry.pivot_start and token.end == entry.pivot_end:
+                    label = entry.label
+            if label is not None:
                 instance_counter += 1
                 instance_id = "h{:03d}".format(instance_counter)
-                instance = et.SubElement(sentence, "instance")
+                instance = et.SubElement(sentence_element, "instance")
                 instance.set("id", doc_id + "." + sent_id + "." + instance_id)
                 instance.set("lemma", token.lemma)
                 instance.set("pos", token.upos)
                 instance.text = token.form
-                gold_keys.append(doc_id + "." + sent_id + "." + instance_id + "\t" + entry.label)
+                gold_keys.append(doc_id + "." + sent_id + "." + instance_id + "\t" + label)
             else:
-                word = et.SubElement(sentence, "wf")
+                word = et.SubElement(sentence_element, "wf")
                 word.set("lemma", token.lemma)
                 try:
                     word.set("pos", token.upos)
@@ -383,8 +399,11 @@ def preproc(trainsets: List[WSDData],
             max_length=100,
             on_error="skip",
             quiet=False,
-            include_wn=False):
+            include_wn=False,
+            max_entries=16000):
     # Setup
+    # TODO: Split datasets into no more than max_entries entries per split
+    # TODO: Should absolutely also split built in corpora, don't know how to just yet. Maybe load as own corpus?
     try:
         os.makedirs(directory)
         os.makedirs(os.path.join(directory, "data"))
