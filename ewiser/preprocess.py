@@ -63,8 +63,10 @@ def load_bnidmap():
         for line in f:
             line = line.strip().split("\t")
             bn = line[0]
-            wn = line[2]
-            wn2bn[wn] = bn
+            wn1 = line[1]
+            wn2 = line[2]
+            wn2bn[wn1] = bn
+            wn2bn[wn2] = bn
     return wn2bn
 
 
