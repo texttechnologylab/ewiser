@@ -278,7 +278,7 @@ def make_raganato(dataset: WSDData, directory, on_error: str = "skip"):
 
         for token in entry.tokens:
             instance_counter = 0
-            if token.is_pivot:
+            if token.begin == entry.pivot_start and token.end == entry.pivot_end:
 
                 instance_counter += 1
                 instance_id = "h{:03d}".format(instance_counter)
@@ -417,23 +417,21 @@ def preproc(trainsets: List[WSDData],
 
     # Preproc wordnet with our dict if we include it
     if include_wn:
-        _raganato_preproc(os.path.join(CORPORA_PATH, "training", "orig", "examples.data.xml"),
-                          os.path.join(directory, "train{}".format(train_counter)),
-                          dictionary,
-                          "en",
-                          "sensekeys",
-                          max_length=max_length,
-                          on_error=on_error,
-                          quiet=quiet)
-        _raganato_preproc(os.path.join(CORPORA_PATH, "training", "orig", "glosses_main.data.xml"),
-                          os.path.join(directory, "train{}".format(train_counter + 1)),
-                          dictionary,
-                          "en",
-                          "sensekeys",
-                          max_length=max_length,
-                          on_error=on_error,
-                          quiet=quiet
-                          )
+        outputs = [(os.path.join(CORPORA_PATH, "training", "orig", "examples.data.xml"),
+                    os.path.join(directory, "train{}".format(train_counter))),
+                   (os.path.join(CORPORA_PATH, "training", "orig", "glosses_main.data.xml"),
+                    os.path.join(directory, "train{}".format(train_counter + 1))),
+                   (os.path.join(CORPORA_PATH, "training", "orig", "glosses_main.untagged.data.xml"),
+                    os.path.join(directory, "train{}".format(train_counter + 2)))]
+        for (data_path, outdir) in outputs:
+            _raganato_preproc(data_path,
+                              outdir,
+                              dictionary,
+                              "en",
+                              "sensekeys",
+                              max_length=max_length,
+                              on_error=on_error,
+                              quiet=quiet)
 
     print("Creating/processing eval data...")
     for i, dataset in enumerate(evalsets):

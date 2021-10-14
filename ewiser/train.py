@@ -6,7 +6,7 @@ import platform
 
 from ewiser import preprocess, eval
 from wsdUtils.dataset import WSDData, train_test_split
-from wsdUtils.eval import compute_scores, pretty_print_results
+from wsdUtils.eval import pretty_print_results
 
 
 # Takes a dir with preprocessed corpora and relevant dictionaries, a model output dir, and a bunch of ewiser params
@@ -199,6 +199,9 @@ def cli():
                         "preprocessing to avoid errors. This parameter can be used to point to the directory where the "
                         "specific dictionaries were saved.")
 
+    parser.add_argument("--bert", required=False, type=str, default="bert-base-multilingual-cased",
+                        help="Bert model to use for context vectors")
+
     args = parser.parse_args()
 
     # Either we have args.data or args.train and args.eval
@@ -251,7 +254,10 @@ def cli():
             preprocess.make_raganato(testset, args.train_dir)
     print("Training...")
     # Train model
-    train(args.train_dir, args.model_dir)
+    params = {
+        "context-embeddings-bert-model": args.bert
+    }
+    train(args.train_dir, args.model_dir, **params)
     if testsets:
         print("Testing...")
         for testset in testsets:
