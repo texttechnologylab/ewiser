@@ -397,8 +397,7 @@ def preproc(trainsets: List[WSDData],
             max_length=100,
             on_error="skip",
             quiet=False,
-            include_wn=False,
-            max_sentences=40000):
+            include_wn=False):
     # Setup
     # TODO: Should absolutely also split built in corpora, don't know how to just yet. Maybe load as own corpus?
     #  This will lead to out-of-memory issues otherwise
@@ -428,20 +427,15 @@ def preproc(trainsets: List[WSDData],
     train_counter = 0
 
     for dataset in trainsets:
-        if dataset.sentence_count() > max_sentences:
-            splits = dataset.split_on_sentences(dataset, max_sentences)
-        else:
-            splits = [dataset]
-        for split in splits:
-            subdir_name = "train{}".format(train_counter if train_counter > 0 else "")
-            _preproc_dataset(split,
-                             directory,
-                             dictionary,
-                             subdir_name,
-                             max_length=max_length,
-                             on_error=on_error,
-                             quiet=quiet)
-            train_counter += 1
+        subdir_name = "train{}".format(train_counter if train_counter > 0 else "")
+        _preproc_dataset(dataset,
+                         directory,
+                         dictionary,
+                         subdir_name,
+                         max_length=max_length,
+                         on_error=on_error,
+                         quiet=quiet)
+        train_counter += 1
 
     # Preproc wordnet with our dict if we include it
     if include_wn:
@@ -452,29 +446,14 @@ def preproc(trainsets: List[WSDData],
                    (os.path.join(CORPORA_PATH, "training", "orig", "glosses_main.untagged.data.xml"),
                     os.path.join(directory, "train{}".format(train_counter + 2)))]
         for (data_path, outdir) in outputs:
-            built_in_data = WSDData.load_raganato(data_path)
-            if built_in_data.sentence_count() > max_sentences:
-                splits = built_in_data.split_on_sentences(built_in_data, max_sentences)
-            else:
-                splits = [built_in_data]
-            for split in splits:
-                subdir_name = "train{}".format(train_counter if train_counter > 0 else "")
-                _preproc_dataset(split,
-                                 directory,
-                                 dictionary,
-                                 subdir_name,
-                                 max_length=max_length,
-                                 on_error=on_error,
-                                 quiet=quiet)
-                train_counter += 1
-#            _raganato_preproc(data_path,
-#                              outdir,
-#                              dictionary,
-#                              "en",
-#                              "sensekeys",
-#                              max_length=max_length,
-#                              on_error=on_error,
-#                              quiet=quiet)
+            _raganato_preproc(data_path,
+                              outdir,
+                              dictionary,
+                              "en",
+                              "sensekeys",
+                              max_length=max_length,
+                              on_error=on_error,
+                              quiet=quiet)
 
     print("Creating/processing eval data...")
     for i, dataset in enumerate(evalsets):
