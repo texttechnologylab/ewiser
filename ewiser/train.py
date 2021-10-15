@@ -183,7 +183,7 @@ def cli():
                         help="Directory where relevant data and preprocessed corpora will be stored")
 
     # Directory in the training directory for models
-    parser.add_argument("--model-dir", required=True, type=str,
+    parser.add_argument("--model-dir", required=False, type=str, default="models",
                         help="Subdirectory in the training directory where checkpoints will be saved")
 
     # If we should include the wordnet glosses and examples in the training data
