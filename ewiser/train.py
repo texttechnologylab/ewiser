@@ -25,7 +25,7 @@ def train(out_dir: str, modelname: str, **params):
         "task": "sequence_tagging",
         "criterion": "weighted_cross_entropy",
         "tokens-per-sample": 100,
-        "max-tokens": 800,
+        "max-tokens": 1000,
         "optimizer": "adam",
         "min-lr": 1e-7,
         "lr-scheduler": "fixed",
@@ -81,10 +81,10 @@ def train(out_dir: str, modelname: str, **params):
                     "set args2=--decoder-output-pretrained %EMBEDDINGS% ^\n"
                         " --decoder-use-structured-logits ^\n"
                         " --decoder-structured-logits-edgelists ^\n"
-                        " %EDGES%\\hypernyms.tsv\n",
-                       # " %EDGES%\\derivationally.sym.tsv ^\n"
-                       # " %EDGES%\\similartos.sym.tsv ^\n"
-                       # " %EDGES%\\verbgroups.sym.tsv \n",
+                        " %EDGES%\\hypernyms.tsv ^\n"
+                        " %EDGES%\\derivationally.sym.tsv ^\n"
+                        " %EDGES%\\similartos.sym.tsv ^\n"
+                        " %EDGES%\\verbgroups.sym.tsv \n",
                     # Stage 1 Traininig
                     "cmd /c python bin\\train.py %CORPUS_DIR% %args1% %args2% --lr 1e-4 --save-dir %SAVEDIR% ^\n"
                         " --max-epoch %EPOCHS_1% --decoder-output-fixed --decoder-structured-logits-trainable ^\n"

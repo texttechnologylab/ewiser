@@ -60,7 +60,7 @@ def eval_ewiser(checkpoint_path: str,
                 else:
                     print("No valid gold labels for key {} in {}, skipping".format(key, test_path))
             else:
-                print("Mismatch between test and train keys, missing key {} in {}}, skipping".format(key, test_path))
+                print("Mismatch between test and train keys, missing key {} in {}, skipping".format(key, test_path))
         scores[test_path] = compute_scores(golds, preds)
     return scores
 
