@@ -442,9 +442,9 @@ def preproc(trainsets: List[WSDData],
         outputs = [(os.path.join(CORPORA_PATH, "training", "orig", "examples.data.xml"),
                     os.path.join(directory, "train{}".format(train_counter))),
                    (os.path.join(CORPORA_PATH, "training", "orig", "glosses_main.data.xml"),
-                    os.path.join(directory, "train{}".format(train_counter + 1))),
-                   (os.path.join(CORPORA_PATH, "training", "orig", "glosses_main.untagged.data.xml"),
-                    os.path.join(directory, "train{}".format(train_counter + 2)))]
+                    os.path.join(directory, "train{}".format(train_counter + 1)))]
+                   #(os.path.join(CORPORA_PATH, "training", "orig", "glosses_main.untagged.data.xml"),
+                   # os.path.join(directory, "train{}".format(train_counter + 2)))]
         for (data_path, outdir) in outputs:
             _raganato_preproc(data_path,
                               outdir,
