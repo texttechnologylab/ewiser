@@ -81,10 +81,10 @@ def train(out_dir: str, modelname: str, **params):
                     "set args2=--decoder-output-pretrained %EMBEDDINGS% ^\n"
                         " --decoder-use-structured-logits ^\n"
                         " --decoder-structured-logits-edgelists ^\n"
-                        " %EDGES%\\hypernyms.tsv ^\n"
-                        " %EDGES%\\derivationally.sym.tsv ^\n"
-                        " %EDGES%\\similartos.sym.tsv ^\n"
-                        " %EDGES%\\verbgroups.sym.tsv \n",
+                        " %EDGES%\\hypernyms.tsv \n",
+                        #" %EDGES%\\derivationally.sym.tsv ^\n"
+                        #" %EDGES%\\similartos.sym.tsv ^\n"
+                        #" %EDGES%\\verbgroups.sym.tsv \n",
                     # Stage 1 Traininig
                     "cmd /c python bin\\train.py %CORPUS_DIR% %args1% %args2% --lr 1e-4 --save-dir %SAVEDIR% ^\n"
                         " --max-epoch %EPOCHS_1% --decoder-output-fixed --decoder-structured-logits-trainable ^\n"
@@ -122,8 +122,12 @@ def train(out_dir: str, modelname: str, **params):
                     "mkdir -p ${SAVEDIR}\n",
                     "args1=(\\\n{}\n)\n".format(" \\\n".join(arg_list)),
                     "args2=( --decoder-output-pretrained $EMBEDDINGS --decoder-use-structured-logits"
-                    " --decoder-structured-logits-edgelists ${EDGES}/hypernyms.tsv ${EDGES}/derivationally.sym.tsv"
-                    " ${EDGES}/similartos.sym.tsv ${EDGES}/verbgroups.sym.tsv \n",
+                    " --decoder-structured-logits-edgelists "
+                    "${EDGES}/hypernyms.tsv "
+                    #"${EDGES}/derivationally.sym.tsv "
+                    #"${EDGES}/similartos.sym.tsv "
+                    #"${EDGES}/verbgroups.sym.tsv "
+                    "\n",
                     # Stage 1 training
                     "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\" --lr 1e-4"
                     " --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed"
