@@ -127,7 +127,7 @@ def train(out_dir: str, modelname: str, **params):
                     #"${EDGES}/derivationally.sym.tsv "
                     #"${EDGES}/similartos.sym.tsv "
                     #"${EDGES}/verbgroups.sym.tsv "
-                    "\n",
+                    ")\n",
                     # Stage 1 training
                     "CUDA_VISIBLE_DEVICES=0 python3 bin/train.py $CORPUS_DIR \"${args1[@]}\" \"${args2[@]}\" --lr 1e-4"
                     " --save-dir $SAVEDIR --max-epoch $EPOCHS_1 --decoder-output-fixed"
