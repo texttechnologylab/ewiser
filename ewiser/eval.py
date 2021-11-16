@@ -13,12 +13,17 @@ from typing import List
 def eval_ewiser(checkpoint_path: str,
                 output_dir: str,
                 lang: str = None,
-                test_datasets: List[WSDData] = [],
-                test_xmls: List[str] = []):
+                test_datasets: List[WSDData] = None,
+                test_xmls: List[str] = None):
     """
     Wraps bin/eval_wsd.py, performing all the relevant dictionary updating as we go.
     We compute result scores for each test corpus separately and return them separately as well
     """
+    if test_datasets is None:
+        test_datasets = []
+    if test_xmls is None:
+        test_xmls = []
+
     assert len(test_datasets) > 0 or len(test_xmls) > 0
     if len(test_xmls) > 0:
         assert lang is not None, "Language has to specified manually for xml corpora. " \
@@ -27,19 +32,21 @@ def eval_ewiser(checkpoint_path: str,
     # Turn xml paths into abspaths for the sake of it
     test_paths = [os.path.abspath(test_xml) for test_xml in test_xmls]
     # Run tests on already raganatoed corpora
-    ewiser_results = predict([checkpoint_path],
-                             test_paths,
-                             device="cuda",
-                             dict_path=os.path.join(output_dir, "dict.txt"),  # dict_path is specifically the form dict
-                             lang=lang,
-                             predictions=output_dir)
+    ewiser_results = {}
+    if test_paths:
+        ewiser_results.update(predict([checkpoint_path],
+                                      test_paths,
+                                      device="cuda",
+                                      dict_path=os.path.join(output_dir, "dict.txt"),  # dict_path is specifically the form dict
+                                      lang=lang,
+                                      predictions=output_dir))
 
     # Get results for json sets which can use different languages
     for dataset in test_datasets:
         xml_path = make_raganato(dataset, os.path.abspath(output_dir))
         test_paths.append(xml_path)
         json_result = predict([checkpoint_path],
-                              xml_path,
+                              [xml_path],
                               device="cuda",
                               dict_path=os.path.join(output_dir, "dict.txt"),
                               lang=dataset.lang,
@@ -76,16 +83,16 @@ def cli():
     parser.add_argument("--output", required=True, type=str,
                         help="Directory for temporary data storage and file outputs")
 
-    parser.add_argument("--jsons", required=False, type=str,
+    parser.add_argument("--jsons", required=False, type=str, nargs='*',
                         help="Json datasets to be used for testing")
 
-    parser.add_argument("--xmls", required=False, type=str,
+    parser.add_argument("--xmls", required=False, type=str,  nargs='*',
                         help="Raganato XML style datasets to be used for testing")
 
-    parser.add_argument("--lang", required=True, type=str,
+    parser.add_argument("--lang", required=False, type=str,
                         help="Language of the xml corpora. Must be identical for all, undefined behaviour otherwise")
 
-    parser.add_argument("--dicts", required=False, type=str,
+    parser.add_argument("--dict-dir", required=False, type=str,
                         help="Dictionary entries will be set using the json datasets. This argument can be specified "
                              "to add additional dictionary entries. This is necessary if you have xml datasets whose "
                              "keys are not included in the json datasets")
@@ -94,14 +101,21 @@ def cli():
 
     # Make sure we actually have data
     assert args.jsons is not None or args.xmls is not None
+    if args.xmls:
+        assert args.lang is not None, "Must provide language for xml corpora."
 
     datasets = []
     for json_path in args.jsons:
         dataset = WSDData.load(json_path)
         datasets.append(dataset)
 
+    try:
+        os.makedirs(args.output)
+    except OSError:
+        print("Could not create output directories")
+
     # Set dictionaries. If we have created test XMLs ahead of time we have to pass dict_dir
-    created_dicts = set_dicts(datasets, dict_dir=args.dicts)
+    created_dicts = set_dicts(datasets, dict_dir=args.dict_dir, include_wn=False)
     # Copy form dictionary that we need for preprocessing and training
     # Copy other dictionaries as well for backup
     for dictpath in created_dicts:
