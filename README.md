@@ -1,3 +1,19 @@
+# EWISER
+
+This repo is our fork of EWISER. 
+The primary change is to automatically update several dictionaries that determine which lemmas and labels the system 
+will disambiguate. Updating them to match the training and test data is very important, as it has a huge impact on 
+network accuracy.
+
+We also added our own training/evaluation scripts to allow more flexible training and evaluating and to make it work 
+with our data formats.
+
+See the [main repository README](https://github.com/texttechnologylab/VerbSensDisambiguation) for details on installation
+and usage.
+
+
+Below is the original EWISER README. Please make sure to cite them if you use this repo!
+
 # EWISER (Enhanced WSD Integrating Synset Embeddings and Relations)
 This repo hosts the code necessary to reproduce the results of our ACL 2020 paper, *Breaking Through the 80% Glass Ceiling: Raising the State of the Art in Word Sense Disambiguation by Incorporating Knowledge Graph Information*, by Michele Bevilacqua and Roberto Navigli, which you can read on [ACL Anthology](https://www.aclweb.org/anthology/2020.acl-main.255/).
 
@@ -121,7 +137,7 @@ The sense embeddings will have to be in Glove .txt format, without a header row,
 The adjacency matrix A in EWISER is stored as an edgelist. Each line is an edge, with three `\t`-separated values. Check `res/edges/` for examples.
 
 ## License
-This project is released under the CC-BY-NC 4.0 license (see `LICENSE.txt`). If you use EWISER, please put a link to this repo.
+This project is released under the CC-BY-NC-SA 4.0 license (see `LICENSE.txt`). If you use EWISER, please put a link to this repo.
 
 ## Acknowledgements
 The authors gratefully acknowledge the support of the <a href="http://mousse-project.org">ERC Consolidator Grant MOUSSE</a> No. 726487 under the European
