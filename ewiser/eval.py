@@ -83,7 +83,7 @@ def cli():
     parser.add_argument("--output", required=True, type=str,
                         help="Directory for temporary data storage and file outputs")
 
-    parser.add_argument("--jsons", required=False, type=str, nargs='*',
+    parser.add_argument("--json", required=False, type=str, nargs='*',
                         help="Json datasets to be used for testing")
 
     parser.add_argument("--xmls", required=False, type=str,  nargs='*',
@@ -100,12 +100,12 @@ def cli():
     args = parser.parse_args()
 
     # Make sure we actually have data
-    assert args.jsons is not None or args.xmls is not None
+    assert args.json is not None or args.xmls is not None
     if args.xmls:
         assert args.lang is not None, "Must provide language for xml corpora."
 
     datasets = []
-    for json_path in args.jsons:
+    for json_path in args.json:
         dataset = WSDData.load(json_path)
         datasets.append(dataset)
 

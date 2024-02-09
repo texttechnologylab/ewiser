@@ -170,26 +170,26 @@ def cli():
                         help="JSON Datafiles that will be used for validation during training")
 
     parser.add_argument("--test", required=False, type=str, nargs='*',
-                        help="JSON Datafiles that you intend to use for testing. No actual testing is done, but "
-                        "dictionary entries are updated")
+                        help="JSON Datafiles that will be used for testing after training.")
 
     # Plain datasets, that we will split ourselves
     parser.add_argument("--data", required=False, type=str, nargs='*',
-                        help="JSON Datafiles that will be split into train/eval/test. Note that the test set will not "
-                             "be used during training. This argument and train/eval are mutually exclusive!")
+                        help="JSON Datafiles that will be split into train/eval/test sets. Note that the test set will not "
+                             "be used during training. This argument and the train/eval/test arguments are mutually exclusive!")
+
     # If we split we have to know ratios
     parser.add_argument("-re", "--ratio-eval", required=False, type=float,
-                        help="ratio of the datasets that will be used as evaluation data")
+                        help="Ratio of the datasets that will be used as evaluation data.")
     parser.add_argument("-rt", "--ratio-test", required=False, type=float,
-                        help="ratio of the datasets that will be used as test data")
+                        help="Ratio of the datasets that will be used as test data.")
 
     # Training directory (will be created if not exists)
     parser.add_argument("--train-dir", required=True, type=str,
-                        help="Directory where relevant data and preprocessed corpora will be stored")
+                        help="Directory where relevant data and preprocessed corpora will be stored.")
 
     # Directory in the training directory for models
     parser.add_argument("--model-dir", required=False, type=str, default="models",
-                        help="Subdirectory in the training directory where checkpoints will be saved")
+                        help="Subdirectory in the training directory where checkpoints will be saved.")
 
     # If we should include the wordnet glosses and examples in the training data
     parser.add_argument("--include-wn", required=False, action="store_true",
@@ -200,12 +200,12 @@ def cli():
                         help="Directory containing additional dictionary files.\n"
                         "Dictionaries are normally built, saved and set automatically during preprocessing."
                         " If you setup two training runs, the set dictionaries will match the last run, not the first."
-                        " It is important that the dictionaries used during training match those used during "
+                        " It is important that the dictionaries used during training or testing match those used during "
                         "preprocessing to avoid errors. This parameter can be used to point to the directory where the "
                         "specific dictionaries were saved.")
 
     parser.add_argument("--bert", required=False, type=str, default="bert-base-multilingual-cased",
-                        help="Bert model to use for context vectors")
+                        help="Bert model to use for context vectors.")
 
     args = parser.parse_args()
 

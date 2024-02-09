@@ -1,3 +1,19 @@
+# EWISER
+
+This repo is our fork of EWISER. 
+The primary change is to automatically update several dictionaries that determine which lemmas and labels the system 
+will disambiguate. Updating them to match the training and test data is very important, as it has a huge impact on 
+network accuracy.
+
+We also added our own training/evaluation scripts to allow more flexible training and evaluating and to make it work 
+with our data formats.
+
+See the [main repository README](https://github.com/texttechnologylab/VerbSensDisambiguation) for details on installation
+and usage.
+
+
+Below is the original EWISER README. Please make sure to cite them if you use this repo!
+
 # EWISER (Enhanced WSD Integrating Synset Embeddings and Relations)
 This repo hosts the code necessary to reproduce the results of our ACL 2020 paper, *Breaking Through the 80% Glass Ceiling: Raising the State of the Art in Word Sense Disambiguation by Incorporating Knowledge Graph Information*, by Michele Bevilacqua and Roberto Navigli, which you can read on [ACL Anthology](https://www.aclweb.org/anthology/2020.acl-main.255/).
 
